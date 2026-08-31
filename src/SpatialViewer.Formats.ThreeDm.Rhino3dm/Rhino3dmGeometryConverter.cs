@@ -9,17 +9,23 @@ internal static class Rhino3dmGeometryConverter
     {
         return geometry switch
         {
-            Rhino.Geometry.Point point => ConvertPoint(point),
+            Rhino.Geometry.Point point => ConvertPointGeometry(point),
             PointCloud pointCloud => ConvertPointCloud(pointCloud),
+            Brep brep => ConvertBrep(brep),
             Extrusion extrusion => ConvertExtrusion(extrusion),
             Mesh mesh => ConvertMesh(mesh),
+            SubD subD => ConvertSubD(subD),
+            InstanceReferenceGeometry instanceReference => ConvertInstanceReference(instanceReference),
+            TextDot textDot => ConvertTextDot(textDot),
+            AnnotationBase annotation => ConvertAnnotation(annotation),
+            Hatch hatch => ConvertHatch(hatch),
             Curve curve => ConvertCurve(curve),
             Surface surface => ConvertSurface(surface),
             _ => null,
         };
     }
 
-    private static ThreeDmPointGeometryData ConvertPoint(Rhino.Geometry.Point point)
+    private static ThreeDmPointGeometryData ConvertPointGeometry(Rhino.Geometry.Point point)
     {
         var bounds = ConvertBounds(point.GetBoundingBox(true));
         return new ThreeDmPointGeometryData(ConvertPoint(point.Location), bounds);
@@ -29,6 +35,172 @@ internal static class Rhino3dmGeometryConverter
     {
         var points = pointCloud.GetPoints().Select(ConvertPoint).ToArray();
         return new ThreeDmPointCloudGeometryData(points, ConvertBounds(pointCloud.GetBoundingBox(true)));
+    }
+
+    private static ThreeDmBrepGeometryData ConvertBrep(Brep brep)
+    {
+        var vertices = new List<ThreeDmBrepVertexData>(brep.Vertices.Count);
+        foreach (var vertex in brep.Vertices)
+        {
+            vertices.Add(new ThreeDmBrepVertexData(
+                vertex.VertexIndex,
+                ConvertPoint(vertex.Location),
+                vertex.Tolerance));
+        }
+
+        var edges = new List<ThreeDmBrepEdgeData>(brep.Edges.Count);
+        foreach (var edge in brep.Edges)
+        {
+            edges.Add(new ThreeDmBrepEdgeData(
+                edge.EdgeIndex,
+                edge.StartVertex.VertexIndex,
+                edge.EndVertex.VertexIndex,
+                edge.Tolerance,
+                ConvertCurve(edge)));
+        }
+
+        var trims = new List<ThreeDmBrepTrimData>(brep.Trims.Count);
+        foreach (var trim in brep.Trims)
+        {
+            trim.GetTolerances(out var toleranceU, out var toleranceV);
+            ThreeDmCurveGeometryData? parameterCurve = null;
+            var trimCurve = trim.TrimCurve;
+            if (trimCurve is not null)
+            {
+                parameterCurve = ConvertCurve(trimCurve);
+            }
+
+            trims.Add(new ThreeDmBrepTrimData(
+                trim.TrimIndex,
+                trim.Face.FaceIndex,
+                trim.Loop.LoopIndex,
+                trim.Edge?.EdgeIndex,
+                trim.StartVertex.VertexIndex,
+                trim.EndVertex.VertexIndex,
+                trim.TrimType.ToString(),
+                trim.IsoStatus.ToString(),
+                trim.IsReversed(),
+                toleranceU,
+                toleranceV,
+                parameterCurve));
+        }
+
+        var loops = new List<ThreeDmBrepLoopData>(brep.Loops.Count);
+        foreach (var loop in brep.Loops)
+        {
+            loops.Add(new ThreeDmBrepLoopData(
+                loop.LoopIndex,
+                loop.Face.FaceIndex,
+                loop.LoopType.ToString(),
+                loop.Trims.Select(trim => trim.TrimIndex).ToArray()));
+        }
+
+        var faces = new List<ThreeDmBrepFaceData>(brep.Faces.Count);
+        foreach (var face in brep.Faces)
+        {
+            faces.Add(new ThreeDmBrepFaceData(
+                face.FaceIndex,
+                face.SurfaceIndex,
+                face.OrientationIsReversed,
+                face.Loops.Select(loop => loop.LoopIndex).ToArray(),
+                ConvertSurface(face)));
+        }
+
+        return new ThreeDmBrepGeometryData(
+            vertices,
+            edges,
+            trims,
+            loops,
+            faces,
+            brep.IsSolid,
+            ConvertBounds(brep.GetBoundingBox(true)));
+    }
+
+    private static ThreeDmInstanceReferenceGeometryData ConvertInstanceReference(InstanceReferenceGeometry instanceReference) =>
+        new(
+            instanceReference.ParentIdefId,
+            ConvertTransform(instanceReference.Xform),
+            ConvertBounds(instanceReference.GetBoundingBox(true)));
+
+    private static ThreeDmSubDGeometryData ConvertSubD(SubD subD)
+    {
+        var vertices = new List<ThreeDmSubDVertexData>(subD.Vertices.Count);
+        foreach (var vertex in subD.Vertices)
+        {
+            vertices.Add(new ThreeDmSubDVertexData(
+                vertex.Id,
+                ConvertPoint(vertex.ControlNetPoint),
+                vertex.Tag.ToString()));
+        }
+
+        var faces = new List<ThreeDmSubDFaceData>(subD.Faces.Count);
+        foreach (var face in subD.Faces)
+        {
+            var vertexIds = new uint[face.VertexCount];
+            for (var i = 0; i < vertexIds.Length; i++)
+            {
+                vertexIds[i] = face.VertexAt(i).Id;
+            }
+
+            faces.Add(new ThreeDmSubDFaceData(
+                face.Id,
+                vertexIds,
+                0,
+                face.PerFaceColor.IsEmpty ? null : ToArgb(face.PerFaceColor)));
+        }
+
+        return new ThreeDmSubDGeometryData(
+            vertices,
+            faces,
+            ConvertBounds(subD.GetBoundingBox(true)));
+    }
+
+    private static ThreeDmTextDotGeometryData ConvertTextDot(TextDot textDot) =>
+        new(
+            textDot.Text ?? string.Empty,
+            textDot.SecondaryText ?? string.Empty,
+            ConvertPoint(textDot.Point),
+            textDot.FontFace ?? string.Empty,
+            textDot.FontHeight,
+            ConvertBounds(textDot.GetBoundingBox(true)));
+
+    private static ThreeDmAnnotationGeometryData ConvertAnnotation(AnnotationBase annotation) =>
+        new(
+            annotation.AnnotationType.ToString(),
+            annotation.PlainText ?? string.Empty,
+            annotation.RichText ?? string.Empty,
+            annotation.DimensionStyleId,
+            ConvertPlane(annotation.Plane),
+            annotation.TextHeight,
+            annotation.TextRotationRadians,
+            ConvertBounds(annotation.GetBoundingBox(true)));
+
+    private static ThreeDmHatchGeometryData ConvertHatch(Hatch hatch)
+    {
+        var outer = ConvertBoundaryCurves(hatch.Get3dCurves(true));
+        var inner = ConvertBoundaryCurves(hatch.Get3dCurves(false));
+        return new ThreeDmHatchGeometryData(
+            hatch.PatternIndex,
+            hatch.PatternScale,
+            hatch.PatternRotation,
+            ConvertPoint(hatch.BasePoint),
+            outer,
+            inner,
+            ConvertBounds(hatch.GetBoundingBox(true)));
+    }
+
+    private static List<ThreeDmCurveGeometryData> ConvertBoundaryCurves(IEnumerable<Curve> curves)
+    {
+        var result = new List<ThreeDmCurveGeometryData>();
+        foreach (var curve in curves)
+        {
+            using (curve)
+            {
+                result.Add(ConvertCurve(curve));
+            }
+        }
+
+        return result;
     }
 
     private static ThreeDmCurveGeometryData ConvertCurve(Curve curve)
@@ -235,6 +407,16 @@ internal static class Rhino3dmGeometryConverter
             ConvertBounds(mesh.GetBoundingBox(true)));
     }
 
+    private static Plane3d ConvertPlane(Plane plane) =>
+        new(ConvertPoint(plane.Origin), ConvertVector(plane.XAxis), ConvertVector(plane.YAxis), ConvertVector(plane.ZAxis));
+
+    private static Transform3d ConvertTransform(Transform transform) =>
+        new(
+            transform.M00, transform.M01, transform.M02, transform.M03,
+            transform.M10, transform.M11, transform.M12, transform.M13,
+            transform.M20, transform.M21, transform.M22, transform.M23,
+            transform.M30, transform.M31, transform.M32, transform.M33);
+
     private static BoundingBox3d ConvertBounds(Rhino.Geometry.BoundingBox bounds)
     {
         if (!bounds.IsValid)
@@ -250,4 +432,6 @@ internal static class Rhino3dmGeometryConverter
 
     private static SpatialViewer.ThreeDm.Core.Vector3d ConvertVector(Rhino.Geometry.Vector3d vector) =>
         new(vector.X, vector.Y, vector.Z);
+
+    private static uint ToArgb(System.Drawing.Color color) => unchecked((uint)color.ToArgb());
 }
