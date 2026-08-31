@@ -18,8 +18,8 @@ internal static class ThreeDmAppearanceResolver
 {
     public static ThreeDmRenderAppearance Resolve(
         ThreeDmSceneObject sceneObject,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById,
-        IReadOnlyDictionary<Guid, ThreeDmMaterialInfo> materialsById,
+        Dictionary<Guid, ThreeDmLayerInfo> layersById,
+        Dictionary<Guid, ThreeDmMaterialInfo> materialsById,
         ThreeDmRenderAppearance? inheritedAppearance = null)
     {
         ArgumentNullException.ThrowIfNull(sceneObject);
@@ -45,7 +45,7 @@ internal static class ThreeDmAppearanceResolver
 
     public static bool IsLayerEffectivelyVisible(
         Guid? layerId,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById)
+        Dictionary<Guid, ThreeDmLayerInfo> layersById)
     {
         if (layerId is null)
         {
