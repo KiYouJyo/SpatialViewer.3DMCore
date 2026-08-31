@@ -69,20 +69,12 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
             () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, cancellationToken),
             CancellationToken.None);
 
-        try
+        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
         {
-            await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-            {
-                yield return update;
-            }
+            yield return update;
+        }
 
-            await producer.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            ObserveFault(producer);
-            throw;
-        }
+        await producer.ConfigureAwait(false);
     }
 
     private static ThreeDmSceneDocument ImportCore(
