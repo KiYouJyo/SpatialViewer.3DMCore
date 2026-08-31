@@ -52,6 +52,52 @@ public sealed class SurfaceRenderSceneIntegrationTests
         Assert.DoesNotContain(highBudget.Diagnostics, item => item.Code == "3DM_RENDER_SURFACE_MESH_PENDING");
     }
 
+    [Fact]
+    public void CameraRelativeToleranceBucketsReuseNearbyZoomMeshes()
+    {
+        var surface = CurvedPatch();
+        var sourceId = Guid.NewGuid();
+        var document = new ThreeDmSceneDocument(
+            "zoom-cache.3dm",
+            [new ThreeDmSceneObject(sourceId, "Surface", null, ThreeDmGeometryKind.Surface, surface.Bounds, Geometry: surface)],
+            surface.Bounds,
+            Array.Empty<ThreeDmImportDiagnostic>());
+        var builder = new ThreeDmRenderSceneBuilder();
+
+        var firstSettings = new ThreeDmTessellationSettings(
+            ThreeDmTessellationQuality.Normal,
+            WorldUnitsPerPixel: 1.0,
+            MaxSurfaceSegmentsPerDirection: 32);
+        var nearbySettings = firstSettings with { WorldUnitsPerPixel = 0.95 };
+        var closerSettings = firstSettings with { WorldUnitsPerPixel = 0.4 };
+
+        var firstBucket = firstSettings.ResolveCacheChordTolerance(surface.Bounds);
+        var nearbyBucket = nearbySettings.ResolveCacheChordTolerance(surface.Bounds);
+        var closerBucket = closerSettings.ResolveCacheChordTolerance(surface.Bounds);
+        Assert.Equal(0.5, firstBucket, 12);
+        Assert.Equal(firstBucket, nearbyBucket, 12);
+        Assert.Equal(0.25, closerBucket, 12);
+
+        var first = builder.Build(document, firstSettings);
+        var firstCacheCount = builder.CacheEntryCount;
+        var nearby = builder.Build(document, nearbySettings);
+        Assert.Equal(firstCacheCount, builder.CacheEntryCount);
+        Assert.Equal(Assert.Single(first.Meshes).Vertices.Count, Assert.Single(nearby.Meshes).Vertices.Count);
+
+        var closer = builder.Build(document, closerSettings);
+        Assert.Equal(firstCacheCount + 1, builder.CacheEntryCount);
+        Assert.True(Assert.Single(closer.Meshes).Vertices.Count >= Assert.Single(first.Meshes).Vertices.Count);
+    }
+
+    [Fact]
+    public void ExplicitAbsoluteToleranceIsNeverBucketed()
+    {
+        var surface = CurvedPatch();
+        var settings = new ThreeDmTessellationSettings(AbsoluteChordTolerance: 0.3);
+
+        Assert.Equal(0.3, settings.ResolveCacheChordTolerance(surface.Bounds), 12);
+    }
+
     private static ThreeDmNurbsSurfaceGeometryData CurvedPatch() =>
         new(
             2,
