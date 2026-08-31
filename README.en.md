@@ -4,7 +4,7 @@
 
 Independent Rhino 3DM viewing core for SpatialViewer. This repository owns 3DM reader adapters, Rhino document semantics, 3D geometry/scene translation, rendering abstractions, and regression tests. The WinUI 3 product UI remains in `KiYouJyo/SpatialViewer`.
 
-> Current stage: establish the same repository boundary and engineering skeleton as `SpatialViewer.CadCore`. The first reader adapter is planned around McNeel's official `Rhino3dm` package, with stable ingestion for layers, attributes, instances, curves/NURBS, Breps, Extrusions, Meshes, SubD, materials, and view metadata.
+> Current version: 0.6.0. Phase 5 Visual Fidelity is complete. The core now covers Rhino3dm ingestion, semantic geometry, Breps/instances/advanced objects, independent NURBS evaluation and adaptive derived geometry, layer/material/ByParent appearance resolution, PBR/texture metadata, and Shaded/Wireframe render-scene contracts. Phase 6 focuses next on background parsing, progressive scene availability, large-model memory/performance, and malformed-file defenses.
 
 ## Design principles
 
