@@ -107,5 +107,6 @@ internal static class ThreeDmVisualFidelityResolver
     private static bool IsObjectVisible(
         ThreeDmSceneObject sceneObject,
         Dictionary<Guid, ThreeDmLayerInfo> layersById) =>
-        sceneObject.IsVisible && ThreeDmAppearanceResolver.IsLayerEffectivelyVisible(sceneObject.LayerId, layersById);
+        (sceneObject.SourceObjectVisible ?? sceneObject.IsVisible) &&
+        ThreeDmAppearanceResolver.IsLayerEffectivelyVisible(sceneObject.LayerId, layersById);
 }
