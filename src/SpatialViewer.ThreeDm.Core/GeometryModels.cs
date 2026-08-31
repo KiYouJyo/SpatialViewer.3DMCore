@@ -80,6 +80,10 @@ public sealed record ThreeDmNurbsSurfaceGeometryData(
     IReadOnlyList<ThreeDmWeightedPoint3d> ControlPoints,
     IReadOnlyList<double> KnotsU,
     IReadOnlyList<double> KnotsV,
+    double StartSuperfluousKnotU,
+    double EndSuperfluousKnotU,
+    double StartSuperfluousKnotV,
+    double EndSuperfluousKnotV,
     BoundingBox3d Bounds)
     : ThreeDmGeometryData(ThreeDmGeometryKind.Surface, Bounds);
 
