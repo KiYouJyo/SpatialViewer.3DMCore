@@ -28,17 +28,25 @@ public enum ThreeDmCurveForm
 }
 
 public sealed record ThreeDmArcGeometryData(
-    Point3d Center,
-    Vector3d Normal,
+    Plane3d Plane,
     double Radius,
     double StartAngleRadians,
-    double EndAngleRadians);
+    double EndAngleRadians)
+{
+    public Point3d Center => Plane.Origin;
+
+    public Vector3d Normal => Plane.ZAxis;
+}
 
 public sealed record ThreeDmEllipseGeometryData(
-    Point3d Center,
-    Vector3d Normal,
+    Plane3d Plane,
     double Radius1,
-    double Radius2);
+    double Radius2)
+{
+    public Point3d Center => Plane.Origin;
+
+    public Vector3d Normal => Plane.ZAxis;
+}
 
 public sealed record ThreeDmNurbsCurveData(
     int Degree,
@@ -46,7 +54,9 @@ public sealed record ThreeDmNurbsCurveData(
     bool IsClosed,
     bool IsPeriodic,
     IReadOnlyList<ThreeDmWeightedPoint3d> ControlPoints,
-    IReadOnlyList<double> Knots);
+    IReadOnlyList<double> Knots,
+    double StartSuperfluousKnot,
+    double EndSuperfluousKnot);
 
 public sealed record ThreeDmCurveGeometryData(
     ThreeDmCurveForm Form,
