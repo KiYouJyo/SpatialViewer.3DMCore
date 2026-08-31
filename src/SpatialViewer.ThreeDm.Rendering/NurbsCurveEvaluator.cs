@@ -73,7 +73,7 @@ internal static class NurbsCurveEvaluator
         return full;
     }
 
-    private static int FindSpan(int n, int degree, double u, IReadOnlyList<double> knots)
+    private static int FindSpan(int n, int degree, double u, double[] knots)
     {
         if (u >= knots[n + 1])
         {
@@ -105,7 +105,7 @@ internal static class NurbsCurveEvaluator
         return mid;
     }
 
-    private static double[] BasisFunctions(int span, double u, int degree, IReadOnlyList<double> knots)
+    private static double[] BasisFunctions(int span, double u, int degree, double[] knots)
     {
         var basis = new double[degree + 1];
         var left = new double[degree + 1];
