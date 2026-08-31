@@ -37,6 +37,14 @@ public sealed class FundamentalGeometryImportTests
 
                 Add(model, new ArcCurve(new Circle(Plane.WorldXY, 3)), "Circle");
 
+                var rotatedPlane = new Plane(
+                    new Rhino.Geometry.Point3d(5, 6, 7),
+                    new Rhino.Geometry.Vector3d(0, 1, 0),
+                    new Rhino.Geometry.Vector3d(0, 0, 1));
+                using var ellipseCurve = new Ellipse(rotatedPlane, 4, 2).ToNurbsCurve();
+                Assert.NotNull(ellipseCurve);
+                Add(model, ellipseCurve, "RotatedEllipse");
+
                 Add(model, new PlaneSurface(
                     Plane.WorldXY,
                     new Interval(0, 10),
@@ -71,6 +79,8 @@ public sealed class FundamentalGeometryImportTests
             Assert.Equal(ThreeDmCurveForm.Line, line.Form);
             Assert.Equal(1, line.Nurbs.Degree);
             Assert.True(line.Nurbs.ControlPoints.Count >= 2);
+            Assert.True(double.IsFinite(line.Nurbs.StartSuperfluousKnot));
+            Assert.True(double.IsFinite(line.Nurbs.EndSuperfluousKnot));
 
             var polyline = Geometry<ThreeDmCurveGeometryData>(document, "Polyline");
             Assert.Equal(ThreeDmCurveForm.Polyline, polyline.Form);
@@ -81,7 +91,18 @@ public sealed class FundamentalGeometryImportTests
             Assert.Equal(ThreeDmCurveForm.Circle, circle.Form);
             Assert.NotNull(circle.Arc);
             Assert.Equal(3, circle.Arc.Radius, 8);
+            Assert.Equal(1, circle.Arc.Plane.XAxis.X, 8);
+            Assert.Equal(1, circle.Arc.Plane.YAxis.Y, 8);
             Assert.True(circle.Nurbs.IsRational);
+
+            var ellipse = Geometry<ThreeDmCurveGeometryData>(document, "RotatedEllipse");
+            Assert.Equal(ThreeDmCurveForm.Ellipse, ellipse.Form);
+            Assert.NotNull(ellipse.Ellipse);
+            Assert.Equal(4, ellipse.Ellipse.Radius1, 8);
+            Assert.Equal(2, ellipse.Ellipse.Radius2, 8);
+            Assert.Equal(0, ellipse.Ellipse.Plane.XAxis.X, 8);
+            Assert.Equal(1, ellipse.Ellipse.Plane.XAxis.Y, 8);
+            Assert.Equal(1, ellipse.Ellipse.Plane.YAxis.Z, 8);
 
             var surface = Geometry<ThreeDmNurbsSurfaceGeometryData>(document, "Surface");
             Assert.True(surface.ControlPointCountU >= 2);
