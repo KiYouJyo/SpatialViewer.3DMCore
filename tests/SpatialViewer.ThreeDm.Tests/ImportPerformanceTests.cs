@@ -1,5 +1,4 @@
 using Rhino.FileIO;
-using Rhino.Geometry;
 using SpatialViewer.Formats.ThreeDm.Rhino3dm;
 using SpatialViewer.ThreeDm.Core;
 
@@ -19,7 +18,7 @@ public sealed class ImportPerformanceTests
             {
                 ProgressIntervalObjects = 1,
             };
-            IThreeDmProgressReportingImporter importer = new Rhino3dmThreeDmImporter();
+            var importer = new Rhino3dmThreeDmImporter();
 
             var document = await importer.ImportAsync(path, options, progress);
 
@@ -103,7 +102,7 @@ public sealed class ImportPerformanceTests
             {
                 ProgressIntervalObjects = 1,
             };
-            IThreeDmProgressReportingImporter importer = new Rhino3dmThreeDmImporter();
+            var importer = new Rhino3dmThreeDmImporter();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
                 await importer.ImportAsync(path, options, progress, cancellation.Token));
@@ -121,7 +120,7 @@ public sealed class ImportPerformanceTests
         using var model = new File3dm();
         for (var i = 0; i < count; i++)
         {
-            model.Objects.Add(new Rhino.Geometry.Point(new Rhino.Geometry.Point3d(i, i * 2, i * 3)));
+            Assert.NotEqual(Guid.Empty, model.Objects.AddPoint(i, i * 2, i * 3));
         }
 
         Assert.True(model.Write(path, 8));
