@@ -53,14 +53,21 @@ public sealed class SurfaceRenderRoundTripTests
             Assert.Equal(mesh.Vertices.Count, mesh.Normals.Count);
             Assert.Equal(mesh.Vertices.Count, mesh.TextureCoordinates.Count);
             Assert.DoesNotContain(renderScene.Diagnostics, item => item.Code == "3DM_RENDER_TESSELLATION_FAILED");
-            Assert.All(mesh.Vertices, vertex =>
+            for (var index = 0; index < mesh.Vertices.Count; index++)
             {
+                var vertex = mesh.Vertices[index];
                 var dx = vertex.X - 10;
                 var dy = vertex.Y - 20;
                 var dz = vertex.Z - 30;
                 var radius = Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
                 Assert.Equal(5, radius, 6);
-            });
+
+                var normal = mesh.Normals[index];
+                var normalLength = Math.Sqrt((normal.X * normal.X) + (normal.Y * normal.Y) + (normal.Z * normal.Z));
+                Assert.Equal(1, normalLength, 6);
+                var radialDot = ((normal.X * dx) + (normal.Y * dy) + (normal.Z * dz)) / radius;
+                Assert.True(Math.Abs(radialDot) > 0.85, $"Surface normal {index} is not aligned with the sphere normal.");
+            }
         }
         finally
         {
