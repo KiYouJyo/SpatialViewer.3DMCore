@@ -52,7 +52,8 @@ public static class ThreeDmNurbsSurfaceTessellator
         }
 
         var indices = BuildIndices(uValues.Length, vValues.Length);
-        var normals = BuildAreaWeightedNormals(vertices, indices);
+        var triangleNormals = BuildAreaWeightedNormals(vertices, indices);
+        var normals = BuildParameterNormals(surface, uValues, vValues, pointCache, triangleNormals);
 
         return new ThreeDmRenderMesh(sourceObjectId, vertices, indices)
         {
@@ -205,6 +206,81 @@ public static class ThreeDmNurbsSurfaceTessellator
         return indices;
     }
 
+    private static ThreeDmRenderNormal[] BuildParameterNormals(
+        ThreeDmNurbsSurfaceGeometryData surface,
+        double[] uValues,
+        double[] vValues,
+        Dictionary<(double U, double V), Point3d> pointCache,
+        ThreeDmRenderNormal[] triangleFallback)
+    {
+        var normals = new ThreeDmRenderNormal[checked(uValues.Length * vValues.Length)];
+        for (var uIndex = 0; uIndex < uValues.Length; uIndex++)
+        {
+            var uWindow = ParameterWindow(uValues, uIndex);
+            for (var vIndex = 0; vIndex < vValues.Length; vIndex++)
+            {
+                var vWindow = ParameterWindow(vValues, vIndex);
+                var u = uValues[uIndex];
+                var v = vValues[vIndex];
+                var du = Subtract(
+                    EvaluateCached(surface, uWindow.High, v, pointCache),
+                    EvaluateCached(surface, uWindow.Low, v, pointCache));
+                var dv = Subtract(
+                    EvaluateCached(surface, u, vWindow.High, pointCache),
+                    EvaluateCached(surface, u, vWindow.Low, pointCache));
+                var normal = Normalize(Cross(du, dv));
+
+                if (IsZero(normal))
+                {
+                    normal = NormalFromInwardFan(surface, uValues, vValues, uIndex, vIndex, pointCache);
+                }
+
+                var index = GridIndex(uIndex, vIndex, vValues.Length);
+                normals[index] = IsZero(normal) ? triangleFallback[index] : normal;
+            }
+        }
+
+        return normals;
+    }
+
+    private static ThreeDmRenderNormal NormalFromInwardFan(
+        ThreeDmNurbsSurfaceGeometryData surface,
+        double[] uValues,
+        double[] vValues,
+        int uIndex,
+        int vIndex,
+        Dictionary<(double U, double V), Point3d> pointCache)
+    {
+        var uWindow = ParameterWindow(uValues, uIndex);
+        var vWindow = ParameterWindow(vValues, vIndex);
+        var u = uValues[uIndex];
+        var v = vValues[vIndex];
+        var center = EvaluateCached(surface, u, v, pointCache);
+
+        var sampleV = vIndex == 0
+            ? v + ((vWindow.High - v) * 0.5)
+            : vIndex == vValues.Length - 1
+                ? v - ((v - vWindow.Low) * 0.5)
+                : v;
+        var sampleU = uIndex == 0
+            ? u + ((uWindow.High - u) * 0.5)
+            : uIndex == uValues.Length - 1
+                ? u - ((u - uWindow.Low) * 0.5)
+                : u;
+
+        var first = EvaluateCached(surface, uWindow.Low, sampleV, pointCache);
+        var second = EvaluateCached(surface, uWindow.High, sampleV, pointCache);
+        var normal = Normalize(Cross(Subtract(first, center), Subtract(second, center)));
+        if (!IsZero(normal))
+        {
+            return normal;
+        }
+
+        first = EvaluateCached(surface, sampleU, vWindow.Low, pointCache);
+        second = EvaluateCached(surface, sampleU, vWindow.High, pointCache);
+        return Normalize(Cross(Subtract(first, center), Subtract(second, center)));
+    }
+
     private static ThreeDmRenderNormal[] BuildAreaWeightedNormals(ThreeDmRenderVertex[] vertices, int[] indices)
     {
         var accumulatedX = new double[vertices.Length];
@@ -248,16 +324,22 @@ public static class ThreeDmNurbsSurfaceTessellator
         var normals = new ThreeDmRenderNormal[vertices.Length];
         for (var index = 0; index < normals.Length; index++)
         {
-            var x = accumulatedX[index];
-            var y = accumulatedY[index];
-            var z = accumulatedZ[index];
-            var length = Math.Sqrt((x * x) + (y * y) + (z * z));
-            normals[index] = length > 1e-15 && double.IsFinite(length)
-                ? new ThreeDmRenderNormal(x / length, y / length, z / length)
-                : new ThreeDmRenderNormal(0, 0, 0);
+            normals[index] = Normalize(new Vector3d(accumulatedX[index], accumulatedY[index], accumulatedZ[index]));
         }
 
         return normals;
+    }
+
+    private static (double Low, double High) ParameterWindow(double[] values, int index)
+    {
+        var low = index > 0 ? values[index - 1] : values[index];
+        var high = index < values.Length - 1 ? values[index + 1] : values[index];
+        if (high > low)
+        {
+            return (low, high);
+        }
+
+        return (values[0], values[^1]);
     }
 
     private static int GridIndex(int u, int v, int countV) => checked((u * countV) + v);
@@ -281,4 +363,24 @@ public static class ThreeDmNurbsSurfaceTessellator
         var dz = left.Z - right.Z;
         return Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
     }
+
+    private static Vector3d Subtract(Point3d left, Point3d right) =>
+        new(left.X - right.X, left.Y - right.Y, left.Z - right.Z);
+
+    private static Vector3d Cross(Vector3d left, Vector3d right) =>
+        new(
+            (left.Y * right.Z) - (left.Z * right.Y),
+            (left.Z * right.X) - (left.X * right.Z),
+            (left.X * right.Y) - (left.Y * right.X));
+
+    private static ThreeDmRenderNormal Normalize(Vector3d vector)
+    {
+        var length = Math.Sqrt((vector.X * vector.X) + (vector.Y * vector.Y) + (vector.Z * vector.Z));
+        return length > 1e-15 && double.IsFinite(length)
+            ? new ThreeDmRenderNormal(vector.X / length, vector.Y / length, vector.Z / length)
+            : new ThreeDmRenderNormal(0, 0, 0);
+    }
+
+    private static bool IsZero(ThreeDmRenderNormal normal) =>
+        Math.Abs(normal.X) <= 1e-15 && Math.Abs(normal.Y) <= 1e-15 && Math.Abs(normal.Z) <= 1e-15;
 }
