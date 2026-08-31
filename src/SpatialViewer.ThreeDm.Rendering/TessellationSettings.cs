@@ -79,7 +79,12 @@ public sealed record ThreeDmTessellationSettings(
 
         var exponent = Math.Floor(Math.Log2(resolved));
         var bucket = Math.Pow(2, exponent);
-        return bucket > 0 && double.IsFinite(bucket) ? bucket : resolved;
+        if (!(bucket > 0) || !double.IsFinite(bucket))
+        {
+            return resolved;
+        }
+
+        return Math.Max(bucket, PositiveModelFloor(modelAbsoluteTolerance));
     }
 
     private static double PositiveModelFloor(double modelAbsoluteTolerance) =>
