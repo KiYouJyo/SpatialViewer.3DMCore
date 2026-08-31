@@ -43,7 +43,7 @@ public sealed class Rhino3dmImporterContractTests
                     IsVisible = true,
                 };
                 model.AllLayers.Add(layer);
-                var storedLayer = model.AllLayers[model.AllLayers.Count - 1];
+                var storedLayer = model.AllLayers.Single(item => item.Name == "Architecture");
 
                 var material = new Material
                 {
@@ -52,7 +52,7 @@ public sealed class Rhino3dmImporterContractTests
                     Transparency = 0.2,
                 };
                 model.AllMaterials.Add(material);
-                var storedMaterial = model.AllMaterials[model.AllMaterials.Count - 1];
+                var storedMaterial = model.AllMaterials.Single(item => item.Name == "Concrete");
 
                 var attributes = new ObjectAttributes
                 {
