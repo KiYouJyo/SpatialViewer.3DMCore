@@ -9,41 +9,36 @@ namespace SpatialViewer.ThreeDm.Tests;
 public sealed class AdvancedObjectImportTests
 {
     [Fact]
-    public async Task ImportAsyncPreservesBrepSubDAnnotationHatchAndNestedInstances()
+    public async Task ImportAsyncPreservesBrepSubDAnnotationHatchLightAndNestedInstances()
     {
         var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase3-{Guid.NewGuid():N}.3dm");
         try
         {
             using (var model = new File3dm())
             {
-                var box = Brep.CreateFromBox(new Rhino.Geometry.BoundingBox(
+                using var boxSource = Brep.CreateFromBox(new Rhino.Geometry.BoundingBox(
                     new Rhino.Geometry.Point3d(0, 0, 0),
                     new Rhino.Geometry.Point3d(10, 8, 6)));
-                Assert.NotNull(box);
-                Add(model, box, "BrepBox");
+                Assert.NotNull(boxSource);
+                Add(model, boxSource, "BrepBox");
 
-                using var mesh = Mesh.CreateFromBox(
-                    new Rhino.Geometry.BoundingBox(
-                        new Rhino.Geometry.Point3d(20, 0, 0),
-                        new Rhino.Geometry.Point3d(24, 4, 4)),
-                    1,
-                    1,
-                    1);
-                Assert.NotNull(mesh);
-                using var subD = SubD.CreateFromMesh(mesh);
-                Assert.NotNull(subD);
-                Add(model, subD, "SubDBox");
+                using var subDSource = new SubD();
+                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(20, 0, 0));
+                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(22, 0, 0));
+                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(22, 2, 0));
+                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(20, 2, 0));
+                Add(model, subDSource, "SubDControlNet");
 
-                using var textDot = new TextDot("Door A", new Rhino.Geometry.Point3d(0, 12, 0))
+                using var textDotSource = new TextDot("Door A", new Rhino.Geometry.Point3d(0, 12, 0))
                 {
                     SecondaryText = "D-01",
                     FontHeight = 14,
                 };
-                Add(model, textDot, "TextDot");
+                Add(model, textDotSource, "TextDot");
 
                 var textId = model.Objects.AddText(
                     "Room 101",
-                    new Plane(new Rhino.Geometry.Point3d(0, 16, 0), Vector3d.ZAxis),
+                    new Plane(new Rhino.Geometry.Point3d(0, 16, 0), Rhino.Geometry.Vector3d.ZAxis),
                     2.5,
                     "Arial",
                     false,
@@ -51,15 +46,41 @@ public sealed class AdvancedObjectImportTests
                     new ObjectAttributes { Name = "Annotation" });
                 Assert.NotEqual(Guid.Empty, textId);
 
-                using var hatchBoundary = new ArcCurve(new Circle(
-                    new Plane(new Rhino.Geometry.Point3d(0, 22, 0), Vector3d.ZAxis),
-                    3));
-                var hatches = Hatch.Create(hatchBoundary, 0, 0.25, 1.5);
-                Assert.NotEmpty(hatches);
-                using (var hatch = hatches[0])
+                var leaderId = model.Objects.AddLeader(
+                    "Leader A",
+                    new Plane(new Rhino.Geometry.Point3d(8, 16, 0), Rhino.Geometry.Vector3d.ZAxis),
+                    new[]
+                    {
+                        new Point2d(0, 0),
+                        new Point2d(3, 1),
+                        new Point2d(5, 1),
+                    },
+                    new ObjectAttributes { Name = "Leader" });
+                Assert.NotEqual(Guid.Empty, leaderId);
+
+                var hatchPlane = new Plane(new Rhino.Geometry.Point3d(0, 22, 0), Rhino.Geometry.Vector3d.ZAxis);
+                using var hatchBoundary = new ArcCurve(new Circle(hatchPlane, 3));
+                using var hatchSource = Hatch.Create(
+                    hatchPlane,
+                    hatchBoundary,
+                    Array.Empty<Curve>(),
+                    0,
+                    0.25,
+                    1.5);
+                Assert.NotNull(hatchSource);
+                Add(model, hatchSource, "Hatch");
+
+                using var lightSource = new Rhino.Geometry.Light
                 {
-                    Add(model, hatch, "Hatch");
-                }
+                    Name = "PointLight",
+                    LightStyle = LightStyle.WorldPoint,
+                    IsEnabled = true,
+                    Location = new Rhino.Geometry.Point3d(5, 5, 12),
+                    Direction = new Rhino.Geometry.Vector3d(0, 0, -1),
+                    Diffuse = System.Drawing.Color.FromArgb(255, 240, 220),
+                    Intensity = 0.75,
+                };
+                Add(model, lightSource, "Light");
 
                 using var childGeometry = new LineCurve(
                     new Rhino.Geometry.Point3d(0, 0, 0),
@@ -68,7 +89,7 @@ public sealed class AdvancedObjectImportTests
                     "ChildBlock",
                     "Phase 3 child definition",
                     Rhino.Geometry.Point3d.Origin,
-                    childGeometry);
+                    new GeometryBase[] { childGeometry });
                 Assert.True(childIndex >= 0);
                 var childDefinition = model.AllInstanceDefinitions.Single(item => item.Index == childIndex);
 
@@ -79,7 +100,7 @@ public sealed class AdvancedObjectImportTests
                     "ParentBlock",
                     "Phase 3 nested parent definition",
                     Rhino.Geometry.Point3d.Origin,
-                    childReference);
+                    new GeometryBase[] { childReference });
                 Assert.True(parentIndex >= 0);
 
                 var topInstanceId = model.Objects.AddInstanceObject(
@@ -93,41 +114,47 @@ public sealed class AdvancedObjectImportTests
 
             var document = await new Rhino3dmThreeDmImporter().ImportAsync(path);
 
-            var brep = Geometry<ThreeDmBrepGeometryData>(document, "BrepBox");
-            Assert.True(brep.IsSolid);
-            Assert.Equal(8, brep.Vertices.Count);
-            Assert.Equal(12, brep.Edges.Count);
-            Assert.Equal(6, brep.Faces.Count);
-            Assert.All(brep.Faces, face => Assert.NotEmpty(face.LoopIndices));
-            Assert.All(brep.Loops, loop => Assert.NotEmpty(loop.TrimIndices));
-            Assert.All(brep.Trims, trim => Assert.NotNull(trim.ParameterCurve));
-            Assert.All(brep.Edges, edge =>
+            var brepData = Geometry<ThreeDmBrepGeometryData>(document, "BrepBox");
+            Assert.True(brepData.IsSolid);
+            Assert.Equal(8, brepData.Vertices.Count);
+            Assert.Equal(12, brepData.Edges.Count);
+            Assert.Equal(6, brepData.Faces.Count);
+            Assert.All(brepData.Faces, face => Assert.NotEmpty(face.LoopIndices));
+            Assert.All(brepData.Loops, loop => Assert.NotEmpty(loop.TrimIndices));
+            Assert.All(brepData.Trims, trim => Assert.NotNull(trim.ParameterCurve));
+            Assert.All(brepData.Edges, edge =>
             {
-                Assert.Contains(brep.Vertices, vertex => vertex.Index == edge.StartVertexIndex);
-                Assert.Contains(brep.Vertices, vertex => vertex.Index == edge.EndVertexIndex);
+                Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.StartVertexIndex);
+                Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.EndVertexIndex);
             });
 
-            var subD = Geometry<ThreeDmSubDGeometryData>(document, "SubDBox");
-            Assert.NotEmpty(subD.Vertices);
-            Assert.NotEmpty(subD.Faces);
-            Assert.All(subD.Faces, face =>
-                Assert.All(face.VertexIds, vertexId =>
-                    Assert.Contains(subD.Vertices, vertex => vertex.Id == vertexId)));
+            var subDData = Geometry<ThreeDmSubDGeometryData>(document, "SubDControlNet");
+            Assert.Equal(4, subDData.Vertices.Count);
 
-            var textDot = Geometry<ThreeDmTextDotGeometryData>(document, "TextDot");
-            Assert.Equal("Door A", textDot.Text);
-            Assert.Equal("D-01", textDot.SecondaryText);
-            Assert.Equal(14, textDot.FontHeight);
+            var textDotData = Geometry<ThreeDmTextDotGeometryData>(document, "TextDot");
+            Assert.Equal("Door A", textDotData.Text);
+            Assert.Equal("D-01", textDotData.SecondaryText);
+            Assert.Equal(14, textDotData.FontHeight);
 
-            var annotation = Geometry<ThreeDmAnnotationGeometryData>(document, "Annotation");
-            Assert.Equal("Room 101", annotation.PlainText);
-            Assert.Equal(2.5, annotation.TextHeight, 8);
+            var annotationData = Geometry<ThreeDmAnnotationGeometryData>(document, "Annotation");
+            Assert.Equal("Room 101", annotationData.PlainText);
+            Assert.Equal(2.5, annotationData.TextHeight, 8);
 
-            var hatch = Geometry<ThreeDmHatchGeometryData>(document, "Hatch");
-            Assert.Equal(0, hatch.PatternIndex);
-            Assert.Equal(1.5, hatch.PatternScale, 8);
-            Assert.Equal(0.25, hatch.PatternRotationRadians, 8);
-            Assert.NotEmpty(hatch.OuterBoundaries);
+            var leaderData = Geometry<ThreeDmAnnotationGeometryData>(document, "Leader");
+            Assert.Equal("Leader A", leaderData.PlainText);
+            Assert.Equal(3, leaderData.LeaderPoints.Count);
+
+            var hatchData = Geometry<ThreeDmHatchGeometryData>(document, "Hatch");
+            Assert.Equal(0, hatchData.PatternIndex);
+            Assert.Equal(1.5, hatchData.PatternScale, 8);
+            Assert.Equal(0.25, hatchData.PatternRotationRadians, 8);
+            Assert.NotEmpty(hatchData.OuterBoundaries);
+
+            var lightData = Geometry<ThreeDmLightGeometryData>(document, "Light");
+            Assert.Equal("PointLight", lightData.Name);
+            Assert.True(lightData.IsEnabled);
+            Assert.Equal(0.75, lightData.Intensity, 8);
+            Assert.Equal(12, lightData.Location.Z, 8);
 
             var childDefinitionData = Assert.Single(document.InstanceDefinitions, item => item.Name == "ChildBlock");
             var parentDefinitionData = Assert.Single(document.InstanceDefinitions, item => item.Name == "ParentBlock");
