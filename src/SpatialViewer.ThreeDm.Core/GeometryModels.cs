@@ -80,12 +80,17 @@ public sealed record ThreeDmNurbsSurfaceGeometryData(
     IReadOnlyList<ThreeDmWeightedPoint3d> ControlPoints,
     IReadOnlyList<double> KnotsU,
     IReadOnlyList<double> KnotsV,
-    double StartSuperfluousKnotU,
-    double EndSuperfluousKnotU,
-    double StartSuperfluousKnotV,
-    double EndSuperfluousKnotV,
     BoundingBox3d Bounds)
-    : ThreeDmGeometryData(ThreeDmGeometryKind.Surface, Bounds);
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Surface, Bounds)
+{
+    public double? StartSuperfluousKnotU { get; init; }
+
+    public double? EndSuperfluousKnotU { get; init; }
+
+    public double? StartSuperfluousKnotV { get; init; }
+
+    public double? EndSuperfluousKnotV { get; init; }
+}
 
 public sealed record ThreeDmExtrusionGeometryData(
     Point3d PathStart,
