@@ -4,6 +4,7 @@ using Rhino.FileIO;
 using Rhino.Geometry;
 using SpatialViewer.Formats.ThreeDm.Rhino3dm;
 using SpatialViewer.ThreeDm.Core;
+using SpatialViewer.ThreeDm.Rendering;
 
 namespace SpatialViewer.ThreeDm.Tests;
 
@@ -109,6 +110,21 @@ public sealed class VisualFidelityImportTests
             Assert.Equal("ColorFromLayer", sceneObject.ColorSource);
             Assert.Equal("MaterialFromLayer", sceneObject.MaterialSource);
             Assert.False(sceneObject.IsVisible);
+            Assert.True(sceneObject.SourceObjectVisible);
+
+            var builder = new ThreeDmVisualRenderSceneBuilder();
+            Assert.Empty(builder.Build(document).Meshes);
+
+            var visibleDocument = document with
+            {
+                Layers = document.Layers
+                    .Select(layer => layer.Id == parentLayerId ? layer with { IsVisible = true } : layer)
+                    .ToArray(),
+            };
+            var visibleMesh = Assert.Single(builder.Build(visibleDocument).Meshes);
+            Assert.Equal(objectId, visibleMesh.SourceObjectId);
+            Assert.Equal(0xFF0C50A0u, visibleMesh.Appearance.ColorArgb);
+            Assert.Equal(materialId, visibleMesh.Appearance.MaterialId);
         }
         finally
         {
