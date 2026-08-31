@@ -4,7 +4,7 @@
 
 SpatialViewer 的独立 Rhino 3DM 看图内核仓库。这里维护 3DM 文件读取适配、Rhino 文档语义模型、三维几何/场景转换、渲染抽象与回归测试；WinUI 3 产品界面保留在 `KiYouJyo/SpatialViewer`。
 
-> 当前阶段：建立与 `SpatialViewer.CadCore` 一致的独立仓库边界和工程骨架。首个读取适配器计划基于 McNeel 官方 `Rhino3dm`，优先保证图层、对象属性、实例、曲线/NURBS、Brep、Extrusion、Mesh、SubD、材质和视图信息能够稳定进入独立场景模型。
+> 当前版本：0.6.0，Phase 5 Visual Fidelity 已完成。内核已具备 Rhino3dm 读取、语义几何、Brep/实例/高级对象、独立 NURBS 求值与自适应派生几何、图层/材质/ByParent 外观解析、PBR/纹理元数据以及 Shaded/Wireframe 渲染场景契约。下一阶段进入 Phase 6 Performance and Robustness，重点处理后台解析、渐进式场景、大模型内存/性能和异常文件防御。
 
 ## 设计原则
 
