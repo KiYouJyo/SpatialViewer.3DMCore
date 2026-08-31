@@ -4,6 +4,7 @@ using Rhino.DocObjects;
 using Rhino.FileIO;
 using Rhino.Geometry;
 using SpatialViewer.Formats.ThreeDm.Rhino3dm;
+using SpatialViewer.ThreeDm.Core;
 
 namespace SpatialViewer.ThreeDm.Tests;
 
