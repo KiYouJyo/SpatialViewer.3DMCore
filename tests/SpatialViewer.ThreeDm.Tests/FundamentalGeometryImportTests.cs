@@ -95,14 +95,17 @@ public sealed class FundamentalGeometryImportTests
             Assert.Equal(1, circle.Arc.Plane.YAxis.Y, 8);
             Assert.True(circle.Nurbs.IsRational);
 
+            // Rhino3dm serializes Ellipse.ToNurbsCurve() as a generic NURBS curve.
+            // The important invariant is that the exact rational curve survives rather than
+            // being flattened to a display polyline; analytic-plane rendering is covered by
+            // the pure-core rotated-ellipse tessellation regression.
             var ellipse = Geometry<ThreeDmCurveGeometryData>(document, "RotatedEllipse");
-            Assert.Equal(ThreeDmCurveForm.Ellipse, ellipse.Form);
-            Assert.NotNull(ellipse.Ellipse);
-            Assert.Equal(4, ellipse.Ellipse.Radius1, 8);
-            Assert.Equal(2, ellipse.Ellipse.Radius2, 8);
-            Assert.Equal(0, ellipse.Ellipse.Plane.XAxis.X, 8);
-            Assert.Equal(1, ellipse.Ellipse.Plane.XAxis.Y, 8);
-            Assert.Equal(1, ellipse.Ellipse.Plane.YAxis.Z, 8);
+            Assert.Equal(ThreeDmCurveForm.Nurbs, ellipse.Form);
+            Assert.Null(ellipse.Ellipse);
+            Assert.True(ellipse.Nurbs.IsRational);
+            Assert.True(ellipse.Nurbs.IsClosed);
+            Assert.True(ellipse.Nurbs.ControlPoints.Count >= 8);
+            Assert.NotEmpty(ellipse.Nurbs.Knots);
 
             var surface = Geometry<ThreeDmNurbsSurfaceGeometryData>(document, "Surface");
             Assert.True(surface.ControlPointCountU >= 2);
