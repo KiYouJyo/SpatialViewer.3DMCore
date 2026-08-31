@@ -14,7 +14,8 @@ public sealed record ThreeDmTessellationSettings(
     double WorldUnitsPerPixel = 0,
     double? AbsoluteChordTolerance = null,
     bool IncludeBrepEdges = true,
-    int MaxCurveSegments = 4096)
+    int MaxCurveSegments = 4096,
+    int MaxSurfaceSegmentsPerDirection = 256)
 {
     public double TargetPixelError => Quality switch
     {
@@ -30,6 +31,14 @@ public sealed record ThreeDmTessellationSettings(
         ThreeDmTessellationQuality.Normal => 24,
         ThreeDmTessellationQuality.High => 48,
         _ => 24,
+    };
+
+    public int MaximumSurfaceRefinementDepth => Quality switch
+    {
+        ThreeDmTessellationQuality.Draft => 6,
+        ThreeDmTessellationQuality.Normal => 8,
+        ThreeDmTessellationQuality.High => 10,
+        _ => 8,
     };
 
     public double ResolveChordTolerance(BoundingBox3d bounds, double modelAbsoluteTolerance = 0)
