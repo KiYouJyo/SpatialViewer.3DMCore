@@ -204,6 +204,7 @@ public sealed class ThreeDmRenderSceneBuilder
                 break;
 
             case ThreeDmBrepGeometryData brep:
+                var hasBrepRenderMeshes = AddEmbeddedRenderMeshes(sceneObject, brep.RenderMeshes, meshes);
                 if (settings.IncludeBrepEdges)
                 {
                     foreach (var edge in brep.Edges)
@@ -217,18 +218,25 @@ public sealed class ThreeDmRenderSceneBuilder
                     }
                 }
 
-                diagnostics.Add(new ThreeDmRenderDiagnostic(
-                    sceneObject.Id,
-                    "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
-                    "Brep edge overlays are available; filled Brep rendering requires an embedded render mesh or a future meshing backend."));
+                if (!hasBrepRenderMeshes)
+                {
+                    diagnostics.Add(new ThreeDmRenderDiagnostic(
+                        sceneObject.Id,
+                        "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
+                        "No embedded Rhino render mesh was stored for this Brep; exact edge overlays remain available."));
+                }
                 break;
 
             case ThreeDmExtrusionGeometryData extrusion:
+                var hasExtrusionRenderMeshes = AddEmbeddedRenderMeshes(sceneObject, extrusion.RenderMeshes, meshes);
                 TessellateExtrusionWireframe(sceneObject.Id, extrusion, settings, modelTolerance, curves);
-                diagnostics.Add(new ThreeDmRenderDiagnostic(
-                    sceneObject.Id,
-                    "3DM_RENDER_EXTRUSION_FILL_PENDING",
-                    "Extrusion wireframe is available; filled side/cap tessellation is not generated in this Phase 4 slice."));
+                if (!hasExtrusionRenderMeshes)
+                {
+                    diagnostics.Add(new ThreeDmRenderDiagnostic(
+                        sceneObject.Id,
+                        "3DM_RENDER_EXTRUSION_FILL_REQUIRES_RENDER_MESH",
+                        "No embedded Rhino render mesh was stored for this extrusion; analytic wireframe remains available."));
+                }
                 break;
 
             case ThreeDmHatchGeometryData hatch:
@@ -258,7 +266,7 @@ public sealed class ThreeDmRenderSceneBuilder
                 diagnostics.Add(new ThreeDmRenderDiagnostic(
                     sceneObject.Id,
                     "3DM_RENDER_SUBD_LIMIT_MESH_PENDING",
-                    "SubD control-net wireframe is available; smooth limit-surface rendering requires an embedded render mesh or future backend."));
+                    "SubD control-net wireframe is available; smooth limit-surface rendering requires a future compatible display-mesh path."));
                 break;
 
             case ThreeDmNurbsSurfaceGeometryData:
@@ -270,6 +278,29 @@ public sealed class ThreeDmRenderSceneBuilder
         }
 
         return new LocalRenderObject(meshes, pointSets, curves, diagnostics);
+    }
+
+    private static bool AddEmbeddedRenderMeshes(
+        ThreeDmSceneObject sceneObject,
+        IReadOnlyList<ThreeDmEmbeddedRenderMeshData> embeddedMeshes,
+        List<ThreeDmRenderMesh> output)
+    {
+        var added = false;
+        foreach (var embedded in embeddedMeshes)
+        {
+            var rendered = ThreeDmMeshTessellator.Tessellate(
+                sceneObject.Id,
+                embedded.Mesh,
+                sceneObject.MaterialId,
+                sceneObject.ObjectColorArgb) with
+            {
+                SourceSubobjectIndex = embedded.SourceSubobjectIndex,
+            };
+            output.Add(rendered);
+            added = true;
+        }
+
+        return added;
     }
 
     private static void TessellateExtrusionWireframe(
