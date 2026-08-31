@@ -42,6 +42,53 @@ public sealed class ImportPerformanceTests
     }
 
     [Fact]
+    public async Task ProgressiveImportEmitsHeaderThenBoundedObjectBatchesAndCompletion()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase6-progressive-{Guid.NewGuid():N}.3dm");
+        try
+        {
+            WritePointFixture(path, 5);
+            var options = new ThreeDmImportOptions
+            {
+                ProgressiveBatchSize = 2,
+            };
+            var importer = new Rhino3dmThreeDmImporter();
+            var updates = new List<ThreeDmProgressiveImportUpdate>();
+
+            await foreach (var update in importer.ImportProgressivelyAsync(path, options))
+            {
+                updates.Add(update);
+            }
+
+            var header = Assert.IsType<ThreeDmImportHeaderUpdate>(updates[0]);
+            Assert.Equal(5, header.TotalObjects);
+            Assert.Equal(Path.GetFullPath(path), header.SourcePath);
+
+            var batches = updates.OfType<ThreeDmImportObjectBatchUpdate>().ToArray();
+            Assert.Equal(3, batches.Length);
+            Assert.Equal([2, 2, 1], batches.Select(item => item.Objects.Count).ToArray());
+            Assert.Equal([2, 4, 5], batches.Select(item => item.ProcessedObjects).ToArray());
+            Assert.All(batches, item => Assert.Equal(5, item.TotalObjects));
+            Assert.True(batches[^1].CumulativeBounds.IsValid);
+
+            var completed = Assert.IsType<ThreeDmImportCompletedUpdate>(updates[^1]);
+            Assert.Equal(5, completed.ImportedObjects);
+            Assert.Equal(5, completed.TotalObjects);
+            Assert.True(completed.Bounds.IsValid);
+            Assert.Empty(completed.Diagnostics);
+
+            var standard = await importer.ImportAsync(path, options);
+            Assert.Equal(
+                standard.Objects.Select(item => item.Id).Order().ToArray(),
+                batches.SelectMany(item => item.Objects).Select(item => item.Id).Order().ToArray());
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
     public async Task ImportAsyncRejectsOversizedFileBeforeRhinoRead()
     {
         var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase6-size-{Guid.NewGuid():N}.3dm");
