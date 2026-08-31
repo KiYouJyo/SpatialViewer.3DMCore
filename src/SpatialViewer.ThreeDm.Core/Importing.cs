@@ -60,6 +60,8 @@ public sealed record ThreeDmImportOptions(
 
     public int ProgressIntervalObjects { get; init; } = 256;
 
+    public int ProgressiveBatchSize { get; init; } = 128;
+
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Limits);
@@ -69,8 +71,40 @@ public sealed record ThreeDmImportOptions(
         {
             throw new ArgumentOutOfRangeException(nameof(ProgressIntervalObjects));
         }
+
+        if (ProgressiveBatchSize <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ProgressiveBatchSize));
+        }
     }
 }
+
+public abstract record ThreeDmProgressiveImportUpdate;
+
+public sealed record ThreeDmImportHeaderUpdate(
+    string SourcePath,
+    ThreeDmDocumentProperties Properties,
+    IReadOnlyList<ThreeDmLayerInfo> Layers,
+    IReadOnlyList<ThreeDmMaterialInfo> Materials,
+    IReadOnlyList<ThreeDmNamedViewInfo> NamedViews,
+    IReadOnlyList<ThreeDmInstanceDefinitionInfo> InstanceDefinitions,
+    int TotalObjects)
+    : ThreeDmProgressiveImportUpdate;
+
+public sealed record ThreeDmImportObjectBatchUpdate(
+    IReadOnlyList<ThreeDmSceneObject> Objects,
+    BoundingBox3d CumulativeBounds,
+    IReadOnlyList<ThreeDmImportDiagnostic> Diagnostics,
+    int ProcessedObjects,
+    int TotalObjects)
+    : ThreeDmProgressiveImportUpdate;
+
+public sealed record ThreeDmImportCompletedUpdate(
+    BoundingBox3d Bounds,
+    IReadOnlyList<ThreeDmImportDiagnostic> Diagnostics,
+    int ImportedObjects,
+    int TotalObjects)
+    : ThreeDmProgressiveImportUpdate;
 
 public interface IThreeDmImporter
 {
@@ -88,5 +122,13 @@ public interface IThreeDmProgressReportingImporter : IThreeDmImporter
         string path,
         ThreeDmImportOptions? options,
         IProgress<ThreeDmImportProgress>? progress,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IThreeDmProgressiveImporter : IThreeDmProgressReportingImporter
+{
+    IAsyncEnumerable<ThreeDmProgressiveImportUpdate> ImportProgressivelyAsync(
+        string path,
+        ThreeDmImportOptions? options = null,
         CancellationToken cancellationToken = default);
 }
