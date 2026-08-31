@@ -5,14 +5,14 @@ namespace SpatialViewer.Formats.ThreeDm.Rhino3dm;
 
 internal static class Rhino3dmGeometryConverter
 {
-    public static ThreeDmGeometryData? Convert(GeometryBase geometry)
+    public static ThreeDmGeometryData? Convert(GeometryBase geometry, bool includeRenderMeshes = true)
     {
         return geometry switch
         {
             Rhino.Geometry.Point point => ConvertPointGeometry(point),
             PointCloud pointCloud => ConvertPointCloud(pointCloud),
-            Brep brep => ConvertBrep(brep),
-            Extrusion extrusion => ConvertExtrusion(extrusion),
+            Brep brep => ConvertBrep(brep, includeRenderMeshes),
+            Extrusion extrusion => ConvertExtrusion(extrusion, includeRenderMeshes),
             Mesh mesh => ConvertMesh(mesh),
             SubD subD => ConvertSubD(subD),
             InstanceReferenceGeometry instanceReference => ConvertInstanceReference(instanceReference),
@@ -39,7 +39,7 @@ internal static class Rhino3dmGeometryConverter
         return new ThreeDmPointCloudGeometryData(points, ConvertBounds(pointCloud.GetBoundingBox(true)));
     }
 
-    private static ThreeDmBrepGeometryData ConvertBrep(Brep brep)
+    private static ThreeDmBrepGeometryData ConvertBrep(Brep brep, bool includeRenderMeshes)
     {
         var vertices = new List<ThreeDmBrepVertexData>(brep.Vertices.Count);
         foreach (var vertex in brep.Vertices)
@@ -115,7 +115,29 @@ internal static class Rhino3dmGeometryConverter
             loops,
             faces,
             brep.IsSolid,
-            ConvertBounds(brep.GetBoundingBox(true)));
+            ConvertBounds(brep.GetBoundingBox(true)))
+        {
+            RenderMeshes = includeRenderMeshes
+                ? ReadBrepRenderMeshes(brep)
+                : Array.Empty<ThreeDmEmbeddedRenderMeshData>(),
+        };
+    }
+
+    private static ThreeDmEmbeddedRenderMeshData[] ReadBrepRenderMeshes(Brep brep)
+    {
+        var renderMeshes = new List<ThreeDmEmbeddedRenderMeshData>();
+        foreach (var face in brep.Faces)
+        {
+            var mesh = face.GetMesh(MeshType.Render);
+            if (mesh is null || mesh.Vertices.Count == 0 || mesh.Faces.Count == 0)
+            {
+                continue;
+            }
+
+            renderMeshes.Add(new ThreeDmEmbeddedRenderMeshData(face.FaceIndex, ConvertMesh(mesh)));
+        }
+
+        return renderMeshes.ToArray();
     }
 
     private static ThreeDmInstanceReferenceGeometryData ConvertInstanceReference(InstanceReferenceGeometry instanceReference) =>
@@ -390,7 +412,7 @@ internal static class Rhino3dmGeometryConverter
             bounds);
     }
 
-    private static ThreeDmExtrusionGeometryData ConvertExtrusion(Extrusion extrusion)
+    private static ThreeDmExtrusionGeometryData ConvertExtrusion(Extrusion extrusion, bool includeRenderMeshes)
     {
         var profiles = new List<ThreeDmCurveGeometryData>(extrusion.ProfileCount);
         for (var i = 0; i < extrusion.ProfileCount; i++)
@@ -402,6 +424,16 @@ internal static class Rhino3dmGeometryConverter
             }
         }
 
+        var renderMeshes = Array.Empty<ThreeDmEmbeddedRenderMeshData>();
+        if (includeRenderMeshes)
+        {
+            var renderMesh = extrusion.GetMesh(MeshType.Render);
+            if (renderMesh is not null && renderMesh.Vertices.Count > 0 && renderMesh.Faces.Count > 0)
+            {
+                renderMeshes = [new ThreeDmEmbeddedRenderMeshData(null, ConvertMesh(renderMesh))];
+            }
+        }
+
         return new ThreeDmExtrusionGeometryData(
             ConvertPoint(extrusion.PathStart),
             ConvertPoint(extrusion.PathEnd),
@@ -410,7 +442,10 @@ internal static class Rhino3dmGeometryConverter
             extrusion.IsCappedAtBottom,
             extrusion.IsCappedAtTop,
             profiles,
-            ConvertBounds(extrusion.GetBoundingBox(true)));
+            ConvertBounds(extrusion.GetBoundingBox(true)))
+        {
+            RenderMeshes = renderMeshes,
+        };
     }
 
     private static ThreeDmMeshGeometryData ConvertMesh(Mesh mesh)
