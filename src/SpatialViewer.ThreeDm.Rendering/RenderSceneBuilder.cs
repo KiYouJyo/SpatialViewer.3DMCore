@@ -135,7 +135,8 @@ public sealed class ThreeDmRenderSceneBuilder
             settings.Quality,
             tolerance,
             settings.IncludeBrepEdges,
-            settings.MaxCurveSegments);
+            settings.MaxCurveSegments,
+            settings.MaxSurfaceSegmentsPerDirection);
 
         LocalRenderObject local;
         try
@@ -269,11 +270,14 @@ public sealed class ThreeDmRenderSceneBuilder
                     "SubD control-net wireframe is available; smooth limit-surface rendering requires a future compatible display-mesh path."));
                 break;
 
-            case ThreeDmNurbsSurfaceGeometryData:
-                diagnostics.Add(new ThreeDmRenderDiagnostic(
+            case ThreeDmNurbsSurfaceGeometryData surface:
+                meshes.Add(ThreeDmNurbsSurfaceTessellator.Tessellate(
                     sceneObject.Id,
-                    "3DM_RENDER_SURFACE_MESH_PENDING",
-                    "NURBS surface semantic data is preserved; filled adaptive surface tessellation is pending."));
+                    surface,
+                    settings,
+                    modelTolerance,
+                    sceneObject.MaterialId,
+                    sceneObject.ObjectColorArgb));
                 break;
         }
 
@@ -528,7 +532,8 @@ public sealed class ThreeDmRenderSceneBuilder
         ThreeDmTessellationQuality Quality,
         double ChordTolerance,
         bool IncludeBrepEdges,
-        int MaxCurveSegments);
+        int MaxCurveSegments,
+        int MaxSurfaceSegmentsPerDirection);
 
     private sealed record LocalRenderObject(
         IReadOnlyList<ThreeDmRenderMesh> Meshes,
