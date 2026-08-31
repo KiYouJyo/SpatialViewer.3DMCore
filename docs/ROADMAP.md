@@ -68,14 +68,28 @@ Implemented source-independent viewing semantics for:
 
 ## Phase 4 — Adaptive tessellation and render scene
 
-- Camera-relative or tolerance-relative tessellation policy.
-- Independent quality presets: draft / normal / high.
-- Preserve analytic curves for crisp line rendering.
-- Generate normals, UVs, material slots, edge overlays and object IDs.
-- Cache meshes by geometry identity + tessellation settings.
-- Avoid converting the whole document to float until render upload.
+**Status: completed in 0.5.0**
 
-**Exit criteria:** circles and NURBS do not visibly facet at normal zoom; large models stay interactive.
+Implemented:
+
+- Camera-relative, model-tolerance-relative and explicit absolute chord-tolerance policies.
+- Independent Draft / Normal / High quality presets and explicit curve/surface tessellation budgets.
+- Analytic Arc/Circle/Ellipse display tessellation using the retained source plane basis; source geometry remains analytic in Core.
+- Source-independent rational/non-rational NURBS curve evaluation and adaptive curve tessellation.
+- Source-independent tensor-product NURBS surface evaluation, preserving openNURBS superfluous U/V knot boundaries.
+- Knot-span-aware adaptive tessellation for standalone untrimmed NURBS surfaces, including indexed triangles, normalized parametric UVs and robust area-weighted normals.
+- Mesh quad triangulation while preserving source vertices, normals, UVs, material IDs, object colors and source-object identity.
+- Stored Rhino render-mesh reuse for trimmed Breps and Extrusions. Trimmed Brep faces are never incorrectly filled by tessellating the untrimmed underlying surface.
+- Exact Brep edge overlays and analytic extrusion wire fallbacks with structured diagnostics when no stored fill mesh exists.
+- Recursive nested InstanceDefinition / InstanceReference expansion with composed 4×4 transforms and retained instance paths.
+- Render-object caches keyed by source identity, quality, chord tolerance and tessellation budgets, with conservative tolerance bucketing for nearby camera zoom levels.
+- Double-precision neutral render data. Conversion to float happens only at the Windows upload boundary, after scene-origin rebasing for large-coordinate stability.
+
+**Regression coverage:** generated tests cover analytic curves, independent NURBS evaluation, rotated analytic planes, mesh triangulation, nested instances, render-mesh fallbacks, adaptive curved surface refinement, cache buckets and large-coordinate upload. A generated Rhino 8 `.3dm` containing a rational NURBS sphere is written, reopened through the public importer and rendered through the neutral surface evaluator/tessellator; generated vertices are checked against the source sphere and normals are validated for unit length/alignment.
+
+**Boundaries:** normalized surface UVs are parametric coordinates, not final material texture mapping; texture/material fidelity belongs to Phase 5. Smooth SubD limit-surface generation remains a future compatible display-mesh path. Phase 4 deliberately keeps the preserved SubD control net instead of introducing a non-Rhino-compatible limit evaluator.
+
+**Exit criteria:** source curves and NURBS remain semantic geometry, display tessellation scales with requested visual tolerance, trimmed Breps do not lose trims, repeated nearby zoom levels can reuse conservative cached geometry, and large coordinates remain double precision until origin-rebased GPU upload.
 
 ## Phase 5 — Visual fidelity
 
