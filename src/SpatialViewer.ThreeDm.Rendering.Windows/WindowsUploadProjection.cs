@@ -8,6 +8,19 @@ public readonly record struct WindowsRenderFloat3(float X, float Y, float Z);
 
 public readonly record struct WindowsRenderFloat2(float X, float Y);
 
+public readonly record struct WindowsRenderAppearance(
+    uint ColorArgb,
+    float Opacity,
+    Guid? MaterialId,
+    uint? SpecularColorArgb,
+    uint? EmissionColorArgb,
+    float Shine,
+    float Reflectivity)
+{
+    public static WindowsRenderAppearance Default { get; } =
+        new(0xFFFFFFFF, 1, null, null, null, 0, 0);
+}
+
 public sealed record WindowsRenderMeshUpload(
     Guid SourceObjectId,
     IReadOnlyList<WindowsRenderFloat3> Vertices,
@@ -21,6 +34,8 @@ public sealed record WindowsRenderMeshUpload(
 
     public uint? ColorArgb { get; init; }
 
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+
     public int? SourceSubobjectIndex { get; init; }
 
     public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
@@ -32,12 +47,18 @@ public sealed record WindowsRenderCurveUpload(
     IReadOnlyList<WindowsRenderFloat3> Points,
     bool IsClosed,
     int? SourceSubobjectIndex,
-    IReadOnlyList<Guid> InstancePath);
+    IReadOnlyList<Guid> InstancePath)
+{
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+}
 
 public sealed record WindowsRenderPointSetUpload(
     Guid SourceObjectId,
     IReadOnlyList<WindowsRenderFloat3> Points,
-    IReadOnlyList<Guid> InstancePath);
+    IReadOnlyList<Guid> InstancePath)
+{
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+}
 
 public sealed record WindowsRenderSceneUpload(
     WindowsRenderOrigin Origin,
@@ -75,6 +96,7 @@ public static class WindowsThreeDmUploadProjection
                 .ToArray(),
             MaterialId = mesh.MaterialId,
             ColorArgb = mesh.ColorArgb,
+            Appearance = ConvertAppearance(mesh.Appearance),
             SourceSubobjectIndex = mesh.SourceSubobjectIndex,
             InstancePath = mesh.InstancePath.ToArray(),
         };
@@ -86,13 +108,29 @@ public static class WindowsThreeDmUploadProjection
             curve.Points.Select(point => Rebase(point, origin)).ToArray(),
             curve.IsClosed,
             curve.SourceSubobjectIndex,
-            curve.InstancePath.ToArray());
+            curve.InstancePath.ToArray())
+        {
+            Appearance = ConvertAppearance(curve.Appearance),
+        };
 
     private static WindowsRenderPointSetUpload ProjectPointSet(ThreeDmRenderPointSet pointSet, WindowsRenderOrigin origin) =>
         new(
             pointSet.SourceObjectId,
             pointSet.Points.Select(point => Rebase(point, origin)).ToArray(),
-            pointSet.InstancePath.ToArray());
+            pointSet.InstancePath.ToArray())
+        {
+            Appearance = ConvertAppearance(pointSet.Appearance),
+        };
+
+    private static WindowsRenderAppearance ConvertAppearance(ThreeDmRenderAppearance appearance) =>
+        new(
+            appearance.ColorArgb,
+            CheckedUnitFloat(appearance.Opacity),
+            appearance.MaterialId,
+            appearance.SpecularColorArgb,
+            appearance.EmissionColorArgb,
+            CheckedFloat(appearance.Shine),
+            CheckedFloat(appearance.Reflectivity));
 
     private static WindowsRenderFloat3 Rebase(ThreeDmRenderVertex vertex, WindowsRenderOrigin origin) =>
         new(
@@ -100,11 +138,21 @@ public static class WindowsThreeDmUploadProjection
             CheckedFloat(vertex.Y - origin.Y),
             CheckedFloat(vertex.Z - origin.Z));
 
+    private static float CheckedUnitFloat(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new InvalidDataException("Render appearance value must be finite.");
+        }
+
+        return (float)Math.Clamp(value, 0, 1);
+    }
+
     private static float CheckedFloat(double value)
     {
         if (!double.IsFinite(value) || value > float.MaxValue || value < -float.MaxValue)
         {
-            throw new InvalidDataException("Render coordinate cannot be represented by the Windows float upload format.");
+            throw new InvalidDataException("Render value cannot be represented by the Windows float upload format.");
         }
 
         return (float)value;
