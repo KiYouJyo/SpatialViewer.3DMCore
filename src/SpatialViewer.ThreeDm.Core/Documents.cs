@@ -58,7 +58,10 @@ public sealed record ThreeDmLayerInfo(
 }
 
 public sealed record ThreeDmPhysicallyBasedMaterialInfo(
-    uint BaseColorArgb,
+    double BaseColorR,
+    double BaseColorG,
+    double BaseColorB,
+    double BaseColorA,
     double Metallic,
     double Roughness,
     double Alpha,
