@@ -57,6 +57,31 @@ public sealed record ThreeDmLayerInfo(
     public Guid? RenderMaterialId { get; init; }
 }
 
+public sealed record ThreeDmPhysicallyBasedMaterialInfo(
+    uint BaseColorArgb,
+    double Metallic,
+    double Roughness,
+    double Alpha,
+    double Opacity,
+    double Clearcoat,
+    double ClearcoatRoughness,
+    string Brdf);
+
+public sealed record ThreeDmMaterialTextureInfo(
+    string FileName,
+    string TextureType,
+    bool IsEnabled,
+    int MappingChannelId,
+    string ProjectionMode,
+    string WrapU,
+    string WrapV,
+    string WrapW,
+    double RepeatU,
+    double RepeatV,
+    double OffsetU,
+    double OffsetV,
+    double RotationRadians);
+
 public sealed record ThreeDmMaterialInfo(
     Guid Id,
     string Name,
@@ -70,6 +95,11 @@ public sealed record ThreeDmMaterialInfo(
     public double Shine { get; init; }
 
     public double Reflectivity { get; init; }
+
+    public ThreeDmPhysicallyBasedMaterialInfo? PhysicallyBased { get; init; }
+
+    public IReadOnlyList<ThreeDmMaterialTextureInfo> Textures { get; init; } =
+        Array.Empty<ThreeDmMaterialTextureInfo>();
 }
 
 public sealed record ThreeDmNamedViewInfo(
