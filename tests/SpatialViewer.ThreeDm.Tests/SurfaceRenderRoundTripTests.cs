@@ -31,6 +31,14 @@ public sealed class SurfaceRenderRoundTripTests
             Assert.True(surfaceData.IsRational);
             Assert.True(surfaceData.ControlPointCountU > surfaceData.DegreeU);
             Assert.True(surfaceData.ControlPointCountV > surfaceData.DegreeV);
+            Assert.True(surfaceData.StartSuperfluousKnotU.HasValue);
+            Assert.True(surfaceData.EndSuperfluousKnotU.HasValue);
+            Assert.True(surfaceData.StartSuperfluousKnotV.HasValue);
+            Assert.True(surfaceData.EndSuperfluousKnotV.HasValue);
+            Assert.True(double.IsFinite(surfaceData.StartSuperfluousKnotU.Value));
+            Assert.True(double.IsFinite(surfaceData.EndSuperfluousKnotU.Value));
+            Assert.True(double.IsFinite(surfaceData.StartSuperfluousKnotV.Value));
+            Assert.True(double.IsFinite(surfaceData.EndSuperfluousKnotV.Value));
 
             var renderScene = new ThreeDmRenderSceneBuilder().Build(
                 document,
