@@ -216,10 +216,10 @@ public static class ThreeDmNurbsSurfaceTessellator
         var normals = new ThreeDmRenderNormal[checked(uValues.Length * vValues.Length)];
         for (var uIndex = 0; uIndex < uValues.Length; uIndex++)
         {
-            var uWindow = ParameterWindow(uValues, uIndex);
+            var uWindow = DifferentialWindow(uValues, uIndex);
             for (var vIndex = 0; vIndex < vValues.Length; vIndex++)
             {
-                var vWindow = ParameterWindow(vValues, vIndex);
+                var vWindow = DifferentialWindow(vValues, vIndex);
                 var u = uValues[uIndex];
                 var v = vValues[vIndex];
                 var du = Subtract(
@@ -258,14 +258,14 @@ public static class ThreeDmNurbsSurfaceTessellator
         var center = EvaluateCached(surface, u, v, pointCache);
 
         var sampleV = vIndex == 0
-            ? v + ((vWindow.High - v) * 0.5)
+            ? v + ((vWindow.High - v) * 0.125)
             : vIndex == vValues.Length - 1
-                ? v - ((v - vWindow.Low) * 0.5)
+                ? v - ((v - vWindow.Low) * 0.125)
                 : v;
         var sampleU = uIndex == 0
-            ? u + ((uWindow.High - u) * 0.5)
+            ? u + ((uWindow.High - u) * 0.125)
             : uIndex == uValues.Length - 1
-                ? u - ((u - uWindow.Low) * 0.5)
+                ? u - ((u - uWindow.Low) * 0.125)
                 : u;
 
         var first = EvaluateCached(surface, uWindow.Low, sampleV, pointCache);
@@ -328,6 +328,35 @@ public static class ThreeDmNurbsSurfaceTessellator
         }
 
         return normals;
+    }
+
+    private static (double Low, double High) DifferentialWindow(double[] values, int index)
+    {
+        var center = values[index];
+        var previous = index > 0 ? values[index - 1] : center;
+        var next = index < values.Length - 1 ? values[index + 1] : center;
+        var previousSpan = center - previous;
+        var nextSpan = next - center;
+        var localSpan = previousSpan > 0 && nextSpan > 0
+            ? Math.Min(previousSpan, nextSpan)
+            : Math.Max(previousSpan, nextSpan);
+        if (!(localSpan > 0) || !double.IsFinite(localSpan))
+        {
+            return ParameterWindow(values, index);
+        }
+
+        var delta = localSpan * 0.001;
+        if (index == 0)
+        {
+            return (center, Math.Min(next, center + delta));
+        }
+
+        if (index == values.Length - 1)
+        {
+            return (Math.Max(previous, center - delta), center);
+        }
+
+        return (center - delta, center + delta);
     }
 
     private static (double Low, double High) ParameterWindow(double[] values, int index)
