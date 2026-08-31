@@ -107,6 +107,7 @@ public sealed record ThreeDmAnnotationGeometryData(
     Plane3d Plane,
     double TextHeight,
     double TextRotationRadians,
+    IReadOnlyList<Point3d> LeaderPoints,
     BoundingBox3d Bounds)
     : ThreeDmGeometryData(ThreeDmGeometryKind.Annotation, Bounds);
 
@@ -119,3 +120,30 @@ public sealed record ThreeDmHatchGeometryData(
     IReadOnlyList<ThreeDmCurveGeometryData> InnerBoundaries,
     BoundingBox3d Bounds)
     : ThreeDmGeometryData(ThreeDmGeometryKind.Hatch, Bounds);
+
+public sealed record ThreeDmLightGeometryData(
+    string Name,
+    string Style,
+    bool IsEnabled,
+    Point3d Location,
+    Vector3d Direction,
+    uint DiffuseColorArgb,
+    double Intensity,
+    double ShadowIntensity,
+    double HotSpot,
+    double SpotAngleRadians,
+    double Radius,
+    BoundingBox3d Bounds)
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Light, Bounds);
+
+public sealed record ThreeDmClippingPlaneGeometryData(
+    ThreeDmNurbsSurfaceGeometryData Surface,
+    IReadOnlyList<Guid> ViewportIds,
+    bool ParticipationListsEnabled,
+    IReadOnlyList<Guid> ObjectIds,
+    IReadOnlyList<int> LayerIndices,
+    bool IsExclusionList,
+    bool PlaneDepthEnabled,
+    double PlaneDepth,
+    BoundingBox3d Bounds)
+    : ThreeDmGeometryData(ThreeDmGeometryKind.ClippingPlane, Bounds);
