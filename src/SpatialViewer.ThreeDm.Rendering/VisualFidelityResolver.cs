@@ -69,9 +69,9 @@ internal static class ThreeDmVisualFidelityResolver
     private static ThreeDmRenderAppearance ResolvePrimitiveAppearance(
         Guid sourceObjectId,
         IReadOnlyList<Guid> instancePath,
-        IReadOnlyDictionary<Guid, ThreeDmSceneObject> objectsById,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById,
-        IReadOnlyDictionary<Guid, ThreeDmMaterialInfo> materialsById)
+        Dictionary<Guid, ThreeDmSceneObject> objectsById,
+        Dictionary<Guid, ThreeDmLayerInfo> layersById,
+        Dictionary<Guid, ThreeDmMaterialInfo> materialsById)
     {
         ThreeDmRenderAppearance? inherited = null;
         foreach (var instanceId in instancePath)
@@ -90,8 +90,8 @@ internal static class ThreeDmVisualFidelityResolver
     private static bool IsPrimitiveVisible(
         Guid sourceObjectId,
         IReadOnlyList<Guid> instancePath,
-        IReadOnlyDictionary<Guid, ThreeDmSceneObject> objectsById,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById)
+        Dictionary<Guid, ThreeDmSceneObject> objectsById,
+        Dictionary<Guid, ThreeDmLayerInfo> layersById)
     {
         foreach (var instanceId in instancePath)
         {
@@ -106,6 +106,6 @@ internal static class ThreeDmVisualFidelityResolver
 
     private static bool IsObjectVisible(
         ThreeDmSceneObject sceneObject,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById) =>
+        Dictionary<Guid, ThreeDmLayerInfo> layersById) =>
         sceneObject.IsVisible && ThreeDmAppearanceResolver.IsLayerEffectivelyVisible(sceneObject.LayerId, layersById);
 }
