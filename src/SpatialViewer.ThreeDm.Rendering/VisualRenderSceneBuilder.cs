@@ -12,10 +12,12 @@ public sealed class ThreeDmVisualRenderSceneBuilder
 
     public ThreeDmRenderScene Build(
         ThreeDmSceneDocument document,
-        ThreeDmTessellationSettings? settings = null)
+        ThreeDmVisualRenderSettings? settings = null)
     {
         ArgumentNullException.ThrowIfNull(document);
-        var geometryScene = _geometryBuilder.Build(document, settings);
-        return ThreeDmVisualFidelityResolver.Apply(document, geometryScene);
+        settings ??= new ThreeDmVisualRenderSettings();
+        var geometryScene = _geometryBuilder.Build(document, settings.Tessellation);
+        var appearanceScene = ThreeDmVisualFidelityResolver.Apply(document, geometryScene);
+        return ThreeDmDisplayModeResolver.Apply(document, appearanceScene, settings.DisplayMode);
     }
 }
