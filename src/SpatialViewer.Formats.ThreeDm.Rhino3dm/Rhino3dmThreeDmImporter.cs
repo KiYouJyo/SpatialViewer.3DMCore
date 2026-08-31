@@ -111,7 +111,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             ThreeDmGeometryData? semanticGeometry = null;
             try
             {
-                semanticGeometry = Rhino3dmGeometryConverter.Convert(geometry);
+                semanticGeometry = Rhino3dmGeometryConverter.Convert(geometry, options.IncludeRenderMeshes);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
