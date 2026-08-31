@@ -209,7 +209,6 @@ internal static class Rhino3dmGeometryConverter
             light.ShadowIntensity,
             light.HotSpot,
             light.SpotAngleRadians,
-            light.Radius,
             ConvertBounds(light.GetBoundingBox(true)));
 
     private static ThreeDmClippingPlaneGeometryData ConvertClippingPlane(ClippingPlaneSurface clippingPlane)
