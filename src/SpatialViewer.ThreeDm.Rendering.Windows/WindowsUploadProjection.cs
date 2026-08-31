@@ -9,7 +9,10 @@ public readonly record struct WindowsRenderFloat3(float X, float Y, float Z);
 public readonly record struct WindowsRenderFloat2(float X, float Y);
 
 public readonly record struct WindowsRenderPbrMaterial(
-    uint BaseColorArgb,
+    float BaseColorR,
+    float BaseColorG,
+    float BaseColorB,
+    float BaseColorA,
     float Metallic,
     float Roughness,
     float Alpha,
@@ -158,7 +161,10 @@ public static class WindowsThreeDmUploadProjection
         if (appearance.PhysicallyBased is { } pbr)
         {
             physicallyBased = new WindowsRenderPbrMaterial(
-                pbr.BaseColorArgb,
+                CheckedUnitFloat(pbr.BaseColorR),
+                CheckedUnitFloat(pbr.BaseColorG),
+                CheckedUnitFloat(pbr.BaseColorB),
+                CheckedUnitFloat(pbr.BaseColorA),
                 CheckedUnitFloat(pbr.Metallic),
                 CheckedUnitFloat(pbr.Roughness),
                 CheckedUnitFloat(pbr.Alpha),
