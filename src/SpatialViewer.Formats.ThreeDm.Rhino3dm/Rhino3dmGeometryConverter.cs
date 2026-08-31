@@ -409,7 +409,13 @@ internal static class Rhino3dmGeometryConverter
             controlPoints,
             knotsU,
             knotsV,
-            bounds);
+            bounds)
+        {
+            StartSuperfluousKnotU = nurbs.KnotsU.SuperfluousKnot(true),
+            EndSuperfluousKnotU = nurbs.KnotsU.SuperfluousKnot(false),
+            StartSuperfluousKnotV = nurbs.KnotsV.SuperfluousKnot(true),
+            EndSuperfluousKnotV = nurbs.KnotsV.SuperfluousKnot(false),
+        };
     }
 
     private static ThreeDmExtrusionGeometryData ConvertExtrusion(Extrusion extrusion, bool includeRenderMeshes)
