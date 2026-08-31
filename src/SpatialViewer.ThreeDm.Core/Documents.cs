@@ -91,7 +91,10 @@ public sealed record ThreeDmSceneObject(
     uint? ObjectColorArgb = null,
     string? ColorSource = null,
     string? MaterialSource = null,
-    ThreeDmGeometryData? Geometry = null);
+    ThreeDmGeometryData? Geometry = null)
+{
+    public bool? SourceObjectVisible { get; init; }
+}
 
 public sealed record ThreeDmSceneDocument(
     string SourcePath,
