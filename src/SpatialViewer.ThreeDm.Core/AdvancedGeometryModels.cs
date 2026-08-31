@@ -132,7 +132,6 @@ public sealed record ThreeDmLightGeometryData(
     double ShadowIntensity,
     double HotSpot,
     double SpotAngleRadians,
-    double Radius,
     BoundingBox3d Bounds)
     : ThreeDmGeometryData(ThreeDmGeometryKind.Light, Bounds);
 
