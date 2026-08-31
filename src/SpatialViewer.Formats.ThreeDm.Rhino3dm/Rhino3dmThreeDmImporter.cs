@@ -144,7 +144,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         };
     }
 
-    private static IReadOnlyList<ThreeDmLayerInfo> ReadLayers(File3dm model)
+    private static List<ThreeDmLayerInfo> ReadLayers(File3dm model)
     {
         var result = new List<ThreeDmLayerInfo>(model.AllLayers.Count);
         foreach (var layer in model.AllLayers)
@@ -162,7 +162,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         return result;
     }
 
-    private static IReadOnlyList<ThreeDmMaterialInfo> ReadMaterials(File3dm model)
+    private static List<ThreeDmMaterialInfo> ReadMaterials(File3dm model)
     {
         var result = new List<ThreeDmMaterialInfo>(model.AllMaterials.Count);
         foreach (var material in model.AllMaterials)
@@ -177,7 +177,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         return result;
     }
 
-    private static IReadOnlyList<ThreeDmNamedViewInfo> ReadNamedViews(File3dm model)
+    private static List<ThreeDmNamedViewInfo> ReadNamedViews(File3dm model)
     {
         var result = new List<ThreeDmNamedViewInfo>(model.AllNamedViews.Count);
         foreach (var view in model.AllNamedViews)
@@ -197,29 +197,45 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
 
     private static Guid? ResolveLayerId(File3dm model, int layerIndex)
     {
-        if (layerIndex < 0 || layerIndex >= model.AllLayers.Count)
+        if (layerIndex < 0)
         {
             return null;
         }
 
-        var id = model.AllLayers[layerIndex].Id;
-        return id == Guid.Empty ? null : id;
+        var layer = model.AllLayers.FindIndex(layerIndex);
+        if (layer is null || layer.Id == Guid.Empty)
+        {
+            return null;
+        }
+
+        return layer.Id;
     }
 
     private static bool ResolveLayerVisibility(File3dm model, int layerIndex)
     {
-        return layerIndex < 0 || layerIndex >= model.AllLayers.Count || model.AllLayers[layerIndex].IsVisible;
+        if (layerIndex < 0)
+        {
+            return true;
+        }
+
+        var layer = model.AllLayers.FindIndex(layerIndex);
+        return layer is null || layer.IsVisible;
     }
 
     private static Guid? ResolveMaterialId(File3dm model, int materialIndex)
     {
-        if (materialIndex < 0 || materialIndex >= model.AllMaterials.Count)
+        if (materialIndex < 0)
         {
             return null;
         }
 
-        var id = model.AllMaterials[materialIndex].Id;
-        return id == Guid.Empty ? null : id;
+        var material = model.AllMaterials.FindIndex(materialIndex);
+        if (material is null || material.Id == Guid.Empty)
+        {
+            return null;
+        }
+
+        return material.Id;
     }
 
     private static ThreeDmGeometryKind GetGeometryKind(GeometryBase geometry)
