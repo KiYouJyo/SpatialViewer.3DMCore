@@ -72,8 +72,6 @@ public sealed record ThreeDmInstanceDefinitionInfo(
     string Name,
     string Description,
     string? SourceArchive,
-    string UpdateType,
-    string UnitSystem,
     IReadOnlyList<Guid> ObjectIds);
 
 public sealed record ThreeDmSubDVertexData(
@@ -84,7 +82,6 @@ public sealed record ThreeDmSubDVertexData(
 public sealed record ThreeDmSubDFaceData(
     uint Id,
     IReadOnlyList<uint> VertexIds,
-    uint PackId,
     uint? PerFaceColorArgb);
 
 public sealed record ThreeDmSubDGeometryData(
