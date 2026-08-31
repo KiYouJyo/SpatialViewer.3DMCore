@@ -10,10 +10,12 @@
   -> 3DM semantic document
   -> source geometry + attributes + instance graph
   -> ThreeDmSceneDocument (double precision)
-  -> tessellation / render-scene generation
-  -> backend-neutral render data
-  -> optional Windows rendering backend
-  -> SpatialViewer UI surface
+  -> tessellation / geometry-cache generation
+  -> backend-neutral render geometry
+  -> visual fidelity resolution (layer/material/instance/display mode)
+  -> backend-neutral resolved appearance
+  -> optional Windows upload projection
+  -> SpatialViewer UI / concrete renderer
 ```
 
 ## Dependency direction
@@ -33,6 +35,14 @@ This repository deliberately uses `SpatialViewer.ThreeDm.*` assembly and namespa
 
 Source geometry and display geometry are separate concepts. Curves, NURBS surfaces, Breps, Extrusions and SubD must not be permanently replaced by low-resolution polylines/meshes during import. Tessellation is derived, parameterized, cacheable, and regenerable.
 
+## Visual-fidelity rule
+
+Geometry caching and visual appearance are separate layers. `ThreeDmRenderSceneBuilder` derives cacheable geometry; `ThreeDmVisualRenderSceneBuilder` then resolves current layer visibility, Rhino color/material source rules, nested-instance `ByParent` inheritance and display mode without mutating or re-importing the source geometry.
+
+Resolved render primitives carry backend-neutral `ThreeDmRenderAppearance` data so the UI or concrete renderer does not need to reinterpret Rhino layer/material tables. Legacy material properties, PBR parameters and texture-slot metadata remain source-independent contracts. Texture metadata is input data, not a claim of Rhino Render/Cycles shader parity.
+
+Source object visibility is retained independently from effective layer visibility. This allows a layer-tree override to reveal already-imported geometry while still respecting objects that were explicitly hidden at source.
+
 ## Instance rule
 
-Rhino instance definitions are represented as a definition graph plus transforms. The importer should avoid eager recursive expansion except for explicitly requested export/debug paths.
+Rhino instance definitions are represented as a definition graph plus transforms. The importer should avoid eager recursive expansion except for explicitly requested export/debug paths. Render expansion retains instance paths so visual `ByParent` inheritance and downstream selection can resolve the correct instance context.
