@@ -13,8 +13,10 @@ public enum ThreeDmGeometryKind
     SubD,
     Annotation,
     TextDot,
+    Hatch,
     InstanceReference,
     Light,
+    ClippingPlane,
 }
 
 public enum ThreeDmDiagnosticSeverity
@@ -92,4 +94,6 @@ public sealed record ThreeDmSceneDocument(
     public IReadOnlyList<ThreeDmMaterialInfo> Materials { get; init; } = Array.Empty<ThreeDmMaterialInfo>();
 
     public IReadOnlyList<ThreeDmNamedViewInfo> NamedViews { get; init; } = Array.Empty<ThreeDmNamedViewInfo>();
+
+    public IReadOnlyList<ThreeDmInstanceDefinitionInfo> InstanceDefinitions { get; init; } = Array.Empty<ThreeDmInstanceDefinitionInfo>();
 }
