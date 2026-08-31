@@ -283,11 +283,12 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             SubD => ThreeDmGeometryKind.SubD,
             InstanceReferenceGeometry => ThreeDmGeometryKind.InstanceReference,
             Hatch => ThreeDmGeometryKind.Hatch,
+            Rhino.Geometry.Light => ThreeDmGeometryKind.Light,
+            ClippingPlaneSurface => ThreeDmGeometryKind.ClippingPlane,
             Curve => ThreeDmGeometryKind.Curve,
             Surface => ThreeDmGeometryKind.Surface,
             TextDot => ThreeDmGeometryKind.TextDot,
             AnnotationBase => ThreeDmGeometryKind.Annotation,
-            _ when geometry.GetType().Name.Contains("Light", StringComparison.Ordinal) => ThreeDmGeometryKind.Light,
             _ => ThreeDmGeometryKind.Unknown,
         };
     }
