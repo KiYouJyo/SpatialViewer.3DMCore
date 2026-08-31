@@ -256,7 +256,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
 
     private static bool IsLayerEffectivelyVisible(
         Guid? layerId,
-        IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById)
+        Dictionary<Guid, ThreeDmLayerInfo> layersById)
     {
         if (layerId is null)
         {
