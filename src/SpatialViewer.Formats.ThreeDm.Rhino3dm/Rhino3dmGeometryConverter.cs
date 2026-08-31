@@ -125,7 +125,7 @@ internal static class Rhino3dmGeometryConverter
     private static ThreeDmSubDGeometryData ConvertSubD(SubD subD)
     {
         var vertices = new List<ThreeDmSubDVertexData>(subD.Vertices.Count);
-        foreach (var vertex in subD.Vertices)
+        for (var vertex = subD.Vertices.First; vertex is not null; vertex = vertex.Next)
         {
             vertices.Add(new ThreeDmSubDVertexData(
                 vertex.Id,
@@ -145,7 +145,6 @@ internal static class Rhino3dmGeometryConverter
             faces.Add(new ThreeDmSubDFaceData(
                 face.Id,
                 vertexIds,
-                0,
                 face.PerFaceColor.IsEmpty ? null : ToArgb(face.PerFaceColor)));
         }
 
