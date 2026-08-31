@@ -191,7 +191,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         var result = new List<ThreeDmMaterialInfo>(model.AllMaterials.Count);
         foreach (var material in model.AllMaterials)
         {
-            var physicallyBased = material.PhysicallyBased;
+            var physicallyBased = material.IsPhysicallyBased ? material.PhysicallyBased : null;
             var textures = material.GetTextures()
                 .Select(texture => new ThreeDmMaterialTextureInfo(
                     texture.FileName ?? string.Empty,
