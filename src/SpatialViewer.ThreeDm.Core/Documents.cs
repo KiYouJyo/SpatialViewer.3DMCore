@@ -52,13 +52,25 @@ public sealed record ThreeDmLayerInfo(
     bool IsVisible,
     bool IsLocked,
     uint ColorArgb,
-    int LinetypeIndex);
+    int LinetypeIndex)
+{
+    public Guid? RenderMaterialId { get; init; }
+}
 
 public sealed record ThreeDmMaterialInfo(
     Guid Id,
     string Name,
     uint DiffuseColorArgb,
-    double Transparency);
+    double Transparency)
+{
+    public uint? SpecularColorArgb { get; init; }
+
+    public uint? EmissionColorArgb { get; init; }
+
+    public double Shine { get; init; }
+
+    public double Reflectivity { get; init; }
+}
 
 public sealed record ThreeDmNamedViewInfo(
     string Name,
