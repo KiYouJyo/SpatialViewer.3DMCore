@@ -281,7 +281,9 @@ internal static class Rhino3dmGeometryConverter
             nurbs.IsClosed,
             nurbs.IsPeriodic,
             controlPoints,
-            knots);
+            knots,
+            nurbs.Knots.SuperfluousKnot(true),
+            nurbs.Knots.SuperfluousKnot(false));
 
         var form = ThreeDmCurveForm.Other;
         var polylinePoints = Array.Empty<SpatialViewer.ThreeDm.Core.Point3d>();
@@ -301,8 +303,7 @@ internal static class Rhino3dmGeometryConverter
         {
             form = ThreeDmCurveForm.Circle;
             arcData = new ThreeDmArcGeometryData(
-                ConvertPoint(circle.Center),
-                ConvertVector(circle.Plane.Normal),
+                ConvertPlane(circle.Plane),
                 circle.Radius,
                 0,
                 Math.PI * 2);
@@ -311,8 +312,7 @@ internal static class Rhino3dmGeometryConverter
         {
             form = ThreeDmCurveForm.Arc;
             arcData = new ThreeDmArcGeometryData(
-                ConvertPoint(arc.Center),
-                ConvertVector(arc.Plane.Normal),
+                ConvertPlane(arc.Plane),
                 arc.Radius,
                 arc.StartAngle,
                 arc.EndAngle);
@@ -321,8 +321,7 @@ internal static class Rhino3dmGeometryConverter
         {
             form = ThreeDmCurveForm.Ellipse;
             ellipseData = new ThreeDmEllipseGeometryData(
-                ConvertPoint(ellipse.Plane.Origin),
-                ConvertVector(ellipse.Plane.Normal),
+                ConvertPlane(ellipse.Plane),
                 ellipse.Radius1,
                 ellipse.Radius2);
         }
