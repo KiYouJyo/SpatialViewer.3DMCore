@@ -31,7 +31,7 @@ public sealed class AdvancedObjectImportTests
                 cachedRenderMesh.Normals.Add(0, 0, -1);
                 cachedRenderMesh.Normals.Add(0, 0, -1);
                 cachedRenderMesh.Normals.Add(0, 0, -1);
-                Assert.True(boxSource.Faces[0].SetMesh(cachedRenderMesh, MeshType.Render));
+                Assert.True(boxSource.Faces[0].SetMesh(MeshType.Render, cachedRenderMesh));
                 Add(model, boxSource, "BrepBox");
 
                 using var textDotSource = new TextDot("Door A", new Rhino.Geometry.Point3d(0, 12, 0))
