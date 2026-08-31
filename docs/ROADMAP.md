@@ -4,7 +4,7 @@ This roadmap defines the implementation order for SpatialViewer.3DMCore. The goa
 
 ## Phase 0 — Repository boundary and contracts
 
-**Status: bootstrap in progress**
+**Status: completed in 0.1.0**
 
 - Mirror CadCore repository shape: independent solution, src/tests/docs/CI/fixtures.
 - Establish collision-free `SpatialViewer.ThreeDm.*` assemblies.
@@ -16,28 +16,37 @@ This roadmap defines the implementation order for SpatialViewer.3DMCore. The goa
 
 ## Phase 1 — 3DM document ingestion
 
+**Status: completed in 0.2.0**
+
 - Read file metadata and archive version.
 - Layers: hierarchy, visibility, locking, color, linetype references.
 - Object attributes: id/name/layer/material/source visibility.
 - Materials and basic render colors/transparency.
 - Named views and model units/tolerances.
 - Structured diagnostics for unsupported/corrupt data.
+- Real `.3dm` write/read regression coverage generated through Rhino3dm.
 
-**Exit criteria:** a real architectural 3DM can be opened and inspected without geometry loss being silently ignored.
+**Exit criteria:** document semantics are exposed through source-independent contracts and unsupported geometry is reported instead of silently discarded. Broader architectural-file corpus validation continues in later fidelity/performance phases.
 
 ## Phase 2 — Fundamental geometry
 
-Implement semantic conversion and bounds for:
+**Status: completed in 0.3.0**
+
+Implemented source-independent semantic conversion and bounds for:
 
 - Point / PointCloud
 - Line / Polyline / PolylineCurve
 - Arc / Circle / Ellipse
-- NurbsCurve and general Curve
-- Plane / Surface / NurbsSurface
-- Extrusion
-- Mesh
+- NurbsCurve and general Curve via NURBS representation
+- Plane / Surface / NurbsSurface via NURBS control net
+- Extrusion with path/caps/profiles
+- Mesh with vertices/faces/normals/texture coordinates
+
+Curves retain NURBS control points, weights and knots. Surfaces retain their two-dimensional NURBS control net and knot vectors. Mesh topology is copied without leaking Rhino3dm types, and Extrusion remains an extrusion rather than being permanently replaced by a mesh or Brep.
 
 **Key rule:** curves remain curves; surfaces remain surfaces. Preview tessellation is derived data.
+
+**Regression coverage:** a generated Rhino 8 `.3dm` containing PointCloud, Line, Polyline, Circle, PlaneSurface, capped Extrusion and quad Mesh with UVs is written to disk, reopened through the public importer and asserted against the source-independent geometry contracts.
 
 ## Phase 3 — Brep, trims, instances and advanced objects
 

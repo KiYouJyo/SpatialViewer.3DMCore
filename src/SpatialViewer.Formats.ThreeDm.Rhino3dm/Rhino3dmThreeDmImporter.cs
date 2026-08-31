@@ -107,6 +107,20 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             var bounds = ConvertBounds(geometry.GetBoundingBox(true));
             documentBounds = documentBounds.Union(bounds);
 
+            ThreeDmGeometryData? semanticGeometry = null;
+            try
+            {
+                semanticGeometry = Rhino3dmGeometryConverter.Convert(geometry);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                diagnostics.Add(new ThreeDmImportDiagnostic(
+                    ThreeDmDiagnosticSeverity.Warning,
+                    "3DM_GEOMETRY_CONVERSION_FAILED",
+                    $"Geometry type '{geometry.GetType().Name}' could not be converted: {exception.Message}",
+                    attributes.ObjectId));
+            }
+
             objects.Add(new ThreeDmSceneObject(
                 attributes.ObjectId,
                 attributes.Name,
@@ -117,7 +131,8 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 isVisible,
                 ToArgb(attributes.ObjectColor),
                 attributes.ColorSource.ToString(),
-                attributes.MaterialSource.ToString()));
+                attributes.MaterialSource.ToString(),
+                semanticGeometry));
         }
 
         return new ThreeDmSceneDocument(
