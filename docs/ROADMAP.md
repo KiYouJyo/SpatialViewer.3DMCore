@@ -50,14 +50,21 @@ Curves retain NURBS control points, weights and knots. Surfaces retain their two
 
 ## Phase 3 — Brep, trims, instances and advanced objects
 
-- Brep faces, loops, trims and edge topology.
-- InstanceDefinition + InstanceReference graph with nested transforms.
-- Annotation/TextDot/leader metadata needed for viewing.
-- Hatch where readable through the adapter.
-- SubD source representation and/or supported render-mesh path.
-- Lights and clipping/visibility metadata where useful to viewing.
+**Status: completed in 0.4.0**
 
-**Exit criteria:** common building/product Rhino models preserve hierarchy and visible object counts closely enough for side-by-side comparison with Rhino.
+Implemented source-independent viewing semantics for:
+
+- Brep vertices, edges, trims, loops and faces, including 3D edge curves, trim parameter-space curves, face NURBS surfaces, topology indices, orientation and tolerances.
+- InstanceDefinition member-object graphs and InstanceReference 4×4 transforms, including nested definitions/references.
+- TextDot and annotation text metadata, annotation planes/styles and leader 3D point chains.
+- Hatch pattern metadata plus outer/inner semantic boundary curves.
+- SubD control-net vertices/faces and per-face color data where exposed by Rhino3dm.
+- Light viewing metadata: style, enabled state, position, direction, color and supported intensity/spot properties.
+- ClippingPlane surface, viewport targets, participation lists and clipping-depth metadata.
+
+**Regression coverage:** a generated Rhino 8 `.3dm` containing a solid Brep box, TextDot, text annotation, leader, hatch and a two-level nested instance-definition/reference graph is written, reopened through the public importer and asserted against the source-independent Phase 3 contracts. The Rhino3dm 8.32 writer cannot create every advanced component used by the reader: generic File3dm object insertion does not create Light components, and a synthetic vertex-only SubD is not a valid serializable SubD. Those readers remain implemented and compile-validated; real Rhino-produced SubD/Light/ClippingPlane fixtures should be added to the fixture corpus as they become available.
+
+**Exit criteria:** topology and instance hierarchy required by the viewer are preserved without flattening to render meshes. Broader side-by-side validation against real architectural/product Rhino models continues in the visual-fidelity and robustness phases.
 
 ## Phase 4 — Adaptive tessellation and render scene
 
