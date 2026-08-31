@@ -98,6 +98,20 @@ public sealed class SurfaceRenderSceneIntegrationTests
         Assert.Equal(0.3, settings.ResolveCacheChordTolerance(surface.Bounds), 12);
     }
 
+    [Fact]
+    public void CacheToleranceNeverDropsBelowModelToleranceFloor()
+    {
+        var surface = CurvedPatch();
+        var settings = new ThreeDmTessellationSettings(
+            ThreeDmTessellationQuality.High,
+            WorldUnitsPerPixel: 0.01);
+
+        var cacheTolerance = settings.ResolveCacheChordTolerance(surface.Bounds, modelAbsoluteTolerance: 4.0);
+
+        Assert.Equal(1.0, cacheTolerance, 12);
+        Assert.Equal(settings.ResolveChordTolerance(surface.Bounds, 4.0), cacheTolerance, 12);
+    }
+
     private static ThreeDmNurbsSurfaceGeometryData CurvedPatch() =>
         new(
             2,
