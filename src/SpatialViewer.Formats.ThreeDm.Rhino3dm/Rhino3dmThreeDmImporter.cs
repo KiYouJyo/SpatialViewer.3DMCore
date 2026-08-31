@@ -4,7 +4,7 @@ using SpatialViewer.ThreeDm.Core;
 
 namespace SpatialViewer.Formats.ThreeDm.Rhino3dm;
 
-public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
+public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressReportingImporter
 {
     public const string PinnedPackageVersion = "8.32.0";
 
@@ -21,37 +21,80 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
     public ValueTask<ThreeDmSceneDocument> ImportAsync(
         string path,
         ThreeDmImportOptions? options = null,
+        CancellationToken cancellationToken = default) =>
+        ImportAsync(path, options, null, cancellationToken);
+
+    public async ValueTask<ThreeDmSceneDocument> ImportAsync(
+        string path,
+        ThreeDmImportOptions? options,
+        IProgress<ThreeDmImportProgress>? progress,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!File.Exists(path))
+        options ??= new ThreeDmImportOptions();
+        options.Validate();
+
+        var file = new FileInfo(path);
+        if (!file.Exists)
         {
-            return ValueTask.FromException<ThreeDmSceneDocument>(new FileNotFoundException("3DM file was not found.", path));
+            throw new FileNotFoundException("3DM file was not found.", path);
         }
 
-        options ??= new ThreeDmImportOptions();
+        if (file.Length > options.Limits.MaxFileSizeBytes)
+        {
+            throw new InvalidDataException(
+                $"3DM file size {file.Length} bytes exceeds the configured limit of {options.Limits.MaxFileSizeBytes} bytes.");
+        }
 
+        progress?.Report(new ThreeDmImportProgress(ThreeDmImportStage.ReadingArchive, 0, 0));
+
+        var worker = Task.Run(
+            () => ImportCore(path, options, progress, cancellationToken),
+            CancellationToken.None);
+
+        try
+        {
+            return await worker.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            ObserveFault(worker);
+            throw;
+        }
+    }
+
+    private static ThreeDmSceneDocument ImportCore(
+        string path,
+        ThreeDmImportOptions options,
+        IProgress<ThreeDmImportProgress>? progress,
+        CancellationToken cancellationToken)
+    {
         try
         {
             using var model = File3dm.Read(path);
             if (model is null)
             {
-                return ValueTask.FromException<ThreeDmSceneDocument>(
-                    new InvalidDataException($"Rhino3dm could not read '{path}'."));
+                throw new InvalidDataException($"Rhino3dm could not read '{path}'.");
             }
 
-            return ValueTask.FromResult(BuildDocument(path, model, options, cancellationToken));
+            cancellationToken.ThrowIfCancellationRequested();
+            ValidateModelLimits(model, options.Limits);
+            progress?.Report(new ThreeDmImportProgress(
+                ThreeDmImportStage.ReadingDocumentTables,
+                0,
+                model.Objects.Count));
+
+            return BuildDocument(path, model, options, progress, cancellationToken);
         }
         catch (OperationCanceledException)
         {
             throw;
         }
-        catch (Exception exception) when (exception is not FileNotFoundException)
+        catch (Exception exception) when (exception is not FileNotFoundException && exception is not InvalidDataException)
         {
-            return ValueTask.FromException<ThreeDmSceneDocument>(
-                new InvalidDataException($"Failed to read 3DM file '{path}'.", exception));
+            throw new InvalidDataException($"Failed to read 3DM file '{path}'.", exception);
         }
     }
 
@@ -59,6 +102,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         string path,
         File3dm model,
         ThreeDmImportOptions options,
+        IProgress<ThreeDmImportProgress>? progress,
         CancellationToken cancellationToken)
     {
         var diagnostics = new List<ThreeDmImportDiagnostic>();
@@ -69,6 +113,13 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         var instanceDefinitions = ReadInstanceDefinitions(model);
         var objects = new List<ThreeDmSceneObject>(model.Objects.Count);
         var documentBounds = BoundingBox3d.Invalid;
+        var totalObjects = model.Objects.Count;
+        var processedObjects = 0;
+
+        progress?.Report(new ThreeDmImportProgress(
+            ThreeDmImportStage.ConvertingObjects,
+            0,
+            totalObjects));
 
         foreach (var fileObject in model.Objects)
         {
@@ -82,65 +133,73 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                     ThreeDmDiagnosticSeverity.Warning,
                     "3DM_OBJECT_MISSING_DATA",
                     "A 3DM object did not expose geometry or attributes and was skipped."));
-                continue;
+            }
+            else
+            {
+                var layerId = ResolveLayerId(model, attributes.LayerIndex);
+                var materialId = ResolveMaterialId(model, attributes.MaterialIndex);
+                var sourceVisible = attributes.Visible;
+                var layerVisible = IsLayerEffectivelyVisible(layerId, layersById);
+                var isVisible = sourceVisible && layerVisible;
+
+                if (options.IncludeHiddenObjects || isVisible)
+                {
+                    var kind = GetGeometryKind(geometry);
+                    if (kind == ThreeDmGeometryKind.Unknown)
+                    {
+                        diagnostics.Add(new ThreeDmImportDiagnostic(
+                            ThreeDmDiagnosticSeverity.Warning,
+                            "3DM_UNSUPPORTED_GEOMETRY",
+                            $"Geometry type '{geometry.GetType().Name}' is not yet semantically supported.",
+                            attributes.ObjectId));
+                    }
+
+                    var bounds = ConvertBounds(geometry.GetBoundingBox(true));
+                    documentBounds = documentBounds.Union(bounds);
+
+                    ThreeDmGeometryData? semanticGeometry = null;
+                    try
+                    {
+                        semanticGeometry = Rhino3dmGeometryConverter.Convert(geometry, options.IncludeRenderMeshes);
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        diagnostics.Add(new ThreeDmImportDiagnostic(
+                            ThreeDmDiagnosticSeverity.Warning,
+                            "3DM_GEOMETRY_CONVERSION_FAILED",
+                            $"Geometry type '{geometry.GetType().Name}' could not be converted: {exception.Message}",
+                            attributes.ObjectId));
+                    }
+
+                    objects.Add(new ThreeDmSceneObject(
+                        attributes.ObjectId,
+                        attributes.Name,
+                        layerId,
+                        kind,
+                        bounds,
+                        materialId,
+                        isVisible,
+                        ToArgb(attributes.ObjectColor),
+                        attributes.ColorSource.ToString(),
+                        attributes.MaterialSource.ToString(),
+                        semanticGeometry)
+                    {
+                        SourceObjectVisible = sourceVisible,
+                    });
+                }
             }
 
-            var layerId = ResolveLayerId(model, attributes.LayerIndex);
-            var materialId = ResolveMaterialId(model, attributes.MaterialIndex);
-            var sourceVisible = attributes.Visible;
-            var layerVisible = IsLayerEffectivelyVisible(layerId, layersById);
-            var isVisible = sourceVisible && layerVisible;
-
-            if (!options.IncludeHiddenObjects && !isVisible)
+            processedObjects++;
+            if (processedObjects == totalObjects || processedObjects % options.ProgressIntervalObjects == 0)
             {
-                continue;
+                progress?.Report(new ThreeDmImportProgress(
+                    ThreeDmImportStage.ConvertingObjects,
+                    processedObjects,
+                    totalObjects));
             }
-
-            var kind = GetGeometryKind(geometry);
-            if (kind == ThreeDmGeometryKind.Unknown)
-            {
-                diagnostics.Add(new ThreeDmImportDiagnostic(
-                    ThreeDmDiagnosticSeverity.Warning,
-                    "3DM_UNSUPPORTED_GEOMETRY",
-                    $"Geometry type '{geometry.GetType().Name}' is not yet semantically supported.",
-                    attributes.ObjectId));
-            }
-
-            var bounds = ConvertBounds(geometry.GetBoundingBox(true));
-            documentBounds = documentBounds.Union(bounds);
-
-            ThreeDmGeometryData? semanticGeometry = null;
-            try
-            {
-                semanticGeometry = Rhino3dmGeometryConverter.Convert(geometry, options.IncludeRenderMeshes);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                diagnostics.Add(new ThreeDmImportDiagnostic(
-                    ThreeDmDiagnosticSeverity.Warning,
-                    "3DM_GEOMETRY_CONVERSION_FAILED",
-                    $"Geometry type '{geometry.GetType().Name}' could not be converted: {exception.Message}",
-                    attributes.ObjectId));
-            }
-
-            objects.Add(new ThreeDmSceneObject(
-                attributes.ObjectId,
-                attributes.Name,
-                layerId,
-                kind,
-                bounds,
-                materialId,
-                isVisible,
-                ToArgb(attributes.ObjectColor),
-                attributes.ColorSource.ToString(),
-                attributes.MaterialSource.ToString(),
-                semanticGeometry)
-            {
-                SourceObjectVisible = sourceVisible,
-            });
         }
 
-        return new ThreeDmSceneDocument(
+        var document = new ThreeDmSceneDocument(
             Path.GetFullPath(path),
             objects,
             documentBounds,
@@ -163,6 +222,48 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             NamedViews = namedViews,
             InstanceDefinitions = instanceDefinitions,
         };
+
+        progress?.Report(new ThreeDmImportProgress(
+            ThreeDmImportStage.Completed,
+            totalObjects,
+            totalObjects));
+        return document;
+    }
+
+    private static void ValidateModelLimits(File3dm model, ThreeDmImportLimits limits)
+    {
+        if (model.Objects.Count > limits.MaxObjectCount)
+        {
+            throw new InvalidDataException(
+                $"3DM object count {model.Objects.Count} exceeds the configured limit of {limits.MaxObjectCount}.");
+        }
+
+        if (model.AllLayers.Count > limits.MaxLayerCount)
+        {
+            throw new InvalidDataException(
+                $"3DM layer count {model.AllLayers.Count} exceeds the configured limit of {limits.MaxLayerCount}.");
+        }
+
+        if (model.AllMaterials.Count > limits.MaxMaterialCount)
+        {
+            throw new InvalidDataException(
+                $"3DM material count {model.AllMaterials.Count} exceeds the configured limit of {limits.MaxMaterialCount}.");
+        }
+
+        if (model.AllInstanceDefinitions.Count > limits.MaxInstanceDefinitionCount)
+        {
+            throw new InvalidDataException(
+                $"3DM instance-definition count {model.AllInstanceDefinitions.Count} exceeds the configured limit of {limits.MaxInstanceDefinitionCount}.");
+        }
+    }
+
+    private static void ObserveFault(Task worker)
+    {
+        _ = worker.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
     private static List<ThreeDmLayerInfo> ReadLayers(File3dm model)
