@@ -134,7 +134,10 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 ToArgb(attributes.ObjectColor),
                 attributes.ColorSource.ToString(),
                 attributes.MaterialSource.ToString(),
-                semanticGeometry));
+                semanticGeometry)
+            {
+                SourceObjectVisible = sourceVisible,
+            });
         }
 
         return new ThreeDmSceneDocument(
