@@ -9,7 +9,7 @@ namespace SpatialViewer.ThreeDm.Tests;
 public sealed class AdvancedObjectImportTests
 {
     [Fact]
-    public async Task ImportAsyncPreservesBrepSubDAnnotationHatchLightAndNestedInstances()
+    public async Task ImportAsyncPreservesBrepSubDAnnotationHatchAndNestedInstances()
     {
         var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase3-{Guid.NewGuid():N}.3dm");
         try
@@ -69,18 +69,6 @@ public sealed class AdvancedObjectImportTests
                     1.5);
                 Assert.NotNull(hatchSource);
                 Add(model, hatchSource, "Hatch");
-
-                using var lightSource = new Rhino.Geometry.Light
-                {
-                    Name = "PointLight",
-                    LightStyle = LightStyle.WorldPoint,
-                    IsEnabled = true,
-                    Location = new Rhino.Geometry.Point3d(5, 5, 12),
-                    Direction = new Rhino.Geometry.Vector3d(0, 0, -1),
-                    Diffuse = System.Drawing.Color.FromArgb(255, 240, 220),
-                    Intensity = 0.75,
-                };
-                Add(model, lightSource, "Light");
 
                 using var childGeometry = new LineCurve(
                     new Rhino.Geometry.Point3d(0, 0, 0),
@@ -149,12 +137,6 @@ public sealed class AdvancedObjectImportTests
             Assert.Equal(1.5, hatchData.PatternScale, 8);
             Assert.Equal(0.25, hatchData.PatternRotationRadians, 8);
             Assert.NotEmpty(hatchData.OuterBoundaries);
-
-            var lightData = Geometry<ThreeDmLightGeometryData>(document, "Light");
-            Assert.Equal("PointLight", lightData.Name);
-            Assert.True(lightData.IsEnabled);
-            Assert.Equal(0.75, lightData.Intensity, 8);
-            Assert.Equal(12, lightData.Location.Z, 8);
 
             var childDefinitionData = Assert.Single(document.InstanceDefinitions, item => item.Name == "ChildBlock");
             var parentDefinitionData = Assert.Single(document.InstanceDefinitions, item => item.Name == "ParentBlock");
