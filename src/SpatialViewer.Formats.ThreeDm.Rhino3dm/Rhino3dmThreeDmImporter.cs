@@ -191,6 +191,24 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         var result = new List<ThreeDmMaterialInfo>(model.AllMaterials.Count);
         foreach (var material in model.AllMaterials)
         {
+            var physicallyBased = material.PhysicallyBased;
+            var textures = material.GetTextures()
+                .Select(texture => new ThreeDmMaterialTextureInfo(
+                    texture.FileName ?? string.Empty,
+                    texture.TextureType.ToString(),
+                    texture.Enabled,
+                    texture.MappingChannelId,
+                    texture.ProjectionMode.ToString(),
+                    texture.WrapU.ToString(),
+                    texture.WrapV.ToString(),
+                    texture.WrapW.ToString(),
+                    texture.Repeat.X,
+                    texture.Repeat.Y,
+                    texture.Offset.X,
+                    texture.Offset.Y,
+                    texture.Rotation))
+                .ToArray();
+
             result.Add(new ThreeDmMaterialInfo(
                 material.Id,
                 material.Name ?? string.Empty,
@@ -201,6 +219,18 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 EmissionColorArgb = ToArgb(material.EmissionColor),
                 Shine = material.Shine,
                 Reflectivity = material.Reflectivity,
+                PhysicallyBased = physicallyBased is null
+                    ? null
+                    : new ThreeDmPhysicallyBasedMaterialInfo(
+                        ToArgb(physicallyBased.BaseColor),
+                        physicallyBased.Metallic,
+                        physicallyBased.Roughness,
+                        physicallyBased.Alpha,
+                        physicallyBased.Opacity,
+                        physicallyBased.Clearcoat,
+                        physicallyBased.ClearcoatRoughness,
+                        physicallyBased.BRDF.ToString()),
+                Textures = textures,
             });
         }
 
