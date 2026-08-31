@@ -5,9 +5,34 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 ## [Unreleased]
 
 ### Planned
-- Add visual-fidelity resolution for layer/object colors, materials and wire/edge modes.
 - Add real-world architectural/product Rhino fixture coverage, including Rhino-produced SubD, Light and ClippingPlane samples.
 - Add large-model performance, progressive-loading and malformed-file baselines.
+
+## [0.6.0] - 2026-08-31
+
+### Added
+- Source-independent visual-appearance resolution for `ColorFromLayer`, `ColorFromObject`, `ColorFromMaterial` and nested-instance `ColorFromParent` semantics.
+- Material-source resolution for object, layer and parent inheritance, including layer render-material references.
+- Effective layer visibility across parent/child layer chains while retaining source object visibility independently for later layer-tree overrides.
+- Legacy material display properties: diffuse color, transparency, specular/emission colors, shine and reflectivity.
+- PBR material metadata guarded by Rhino's physical-material mode, preserving floating-point base RGBA, metallic, roughness, alpha, opacity, clearcoat, clearcoat roughness and BRDF.
+- Material texture-slot metadata including file reference, texture type, enabled state, mapping channel, projection/wrap modes, repeat/offset and rotation.
+- Backend-neutral `ThreeDmRenderAppearance` attached consistently to meshes, curves and point sets after geometry-cache generation.
+- `Shaded`, `ShadedWithEdges` and `Wireframe` display policies. Brep/Extrusion semantic edges remain available as accurate wire fallbacks when fill meshes are absent; generic mesh/surface wireframe uses deduplicated triangle edges.
+- Windows upload projection for resolved appearance, legacy material parameters, PBR parameters and texture-slot metadata alongside the existing origin-rebased geometry upload.
+- `ThreeDmVisualRenderSceneBuilder`, separating tessellation/cache generation from layer/material/instance appearance resolution so display-property changes do not invalidate geometry caches.
+
+### Tests
+- Added resolution tests for layer colors/materials, `ColorFromMaterial`, nested `ByParent` inheritance and ancestor-layer visibility.
+- Added display-mode tests covering shaded edge suppression, wireframe mesh-edge generation and semantic Brep/Extrusion wire preservation.
+- Added Windows upload regression coverage for appearance, PBR parameters and texture metadata.
+- Added generated Rhino 8 `.3dm` round-trip coverage for parent/child layer visibility, layer render materials, legacy material properties, PBR material parameters and texture filename metadata.
+- Added regression coverage proving a hidden parent layer can later be re-enabled without re-importing or losing source-object geometry semantics.
+
+### Notes
+- Texture slots and normalized mesh/surface UVs are preserved as inputs for a future concrete renderer; 0.6.0 does not claim final Rhino texture mapping, image loading or shader parity.
+- PBR base color stays floating-point through Core/neutral rendering and is converted to float only at the Windows upload boundary rather than being prematurely quantized to ARGB.
+- Full Rhino Render/Cycles/RDK material, environment and ground-plane parity remains outside the initial read-core scope.
 
 ## [0.5.0] - 2026-08-31
 
@@ -45,7 +70,7 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 - Real Rhino 8 `.3dm` write/read regression coverage for Brep topology, TextDot, text/leader annotations, hatch and two-level nested instances.
 
 ### Notes
-- Rhino3dm 8.32 cannot synthesize every advanced fixture required by the reader. Runtime-generated Light insertion is unsupported by `File3dmObjectTable`, and a vertex-only synthetic SubD is not a valid serializable SubD. Reader support remains implemented; real Rhino-produced samples are tracked as fixture-corpus follow-up work.
+- Rhino3dm 8.32 cannot synthesize every advanced fixture required by the reader. Runtime-generated Light insertion is unsupported by `File3dmObjectTable`, and a synthetic vertex-only SubD is not a valid serializable SubD. Reader support remains implemented; real Rhino-produced samples are tracked as fixture-corpus follow-up work.
 
 ## [0.3.0] - 2026-08-31
 
