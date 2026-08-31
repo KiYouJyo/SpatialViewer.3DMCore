@@ -128,12 +128,13 @@ public sealed class ThreeDmRenderSceneBuilder
             return;
         }
 
-        var tolerance = settings.ResolveChordTolerance(sceneObject.Bounds, modelTolerance);
+        var cacheTolerance = settings.ResolveCacheChordTolerance(sceneObject.Bounds, modelTolerance);
+        var tessellationSettings = settings with { AbsoluteChordTolerance = cacheTolerance };
         var key = new TessellationCacheKey(
             sceneObject.Id,
             sceneObject.GeometryKind,
             settings.Quality,
-            tolerance,
+            cacheTolerance,
             settings.IncludeBrepEdges,
             settings.MaxCurveSegments,
             settings.MaxSurfaceSegmentsPerDirection);
@@ -141,7 +142,7 @@ public sealed class ThreeDmRenderSceneBuilder
         LocalRenderObject local;
         try
         {
-            local = _cache.GetOrAdd(key, _ => TessellateLocal(sceneObject, settings, modelTolerance));
+            local = _cache.GetOrAdd(key, _ => TessellateLocal(sceneObject, tessellationSettings, modelTolerance));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
