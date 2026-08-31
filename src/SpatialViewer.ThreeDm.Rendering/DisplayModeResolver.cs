@@ -34,8 +34,8 @@ internal static class ThreeDmDisplayModeResolver
 
     private static bool ShouldKeepCurveInShaded(
         ThreeDmRenderCurve curve,
-        IReadOnlyDictionary<Guid, ThreeDmGeometryKind> kindsById,
-        IReadOnlySet<Guid> filledObjectIds)
+        Dictionary<Guid, ThreeDmGeometryKind> kindsById,
+        HashSet<Guid> filledObjectIds)
     {
         if (!kindsById.TryGetValue(curve.SourceObjectId, out var kind))
         {
