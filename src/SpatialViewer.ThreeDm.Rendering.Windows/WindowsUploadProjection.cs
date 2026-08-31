@@ -8,6 +8,31 @@ public readonly record struct WindowsRenderFloat3(float X, float Y, float Z);
 
 public readonly record struct WindowsRenderFloat2(float X, float Y);
 
+public readonly record struct WindowsRenderPbrMaterial(
+    uint BaseColorArgb,
+    float Metallic,
+    float Roughness,
+    float Alpha,
+    float Opacity,
+    float Clearcoat,
+    float ClearcoatRoughness,
+    string Brdf);
+
+public sealed record WindowsRenderMaterialTexture(
+    string FileName,
+    string TextureType,
+    bool IsEnabled,
+    int MappingChannelId,
+    string ProjectionMode,
+    string WrapU,
+    string WrapV,
+    string WrapW,
+    float RepeatU,
+    float RepeatV,
+    float OffsetU,
+    float OffsetV,
+    float RotationRadians);
+
 public readonly record struct WindowsRenderAppearance(
     uint ColorArgb,
     float Opacity,
@@ -17,6 +42,11 @@ public readonly record struct WindowsRenderAppearance(
     float Shine,
     float Reflectivity)
 {
+    public WindowsRenderPbrMaterial? PhysicallyBased { get; init; }
+
+    public IReadOnlyList<WindowsRenderMaterialTexture> Textures { get; init; } =
+        Array.Empty<WindowsRenderMaterialTexture>();
+
     public static WindowsRenderAppearance Default { get; } =
         new(0xFFFFFFFF, 1, null, null, null, 0, 0);
 }
@@ -122,15 +152,52 @@ public static class WindowsThreeDmUploadProjection
             Appearance = ConvertAppearance(pointSet.Appearance),
         };
 
-    private static WindowsRenderAppearance ConvertAppearance(ThreeDmRenderAppearance appearance) =>
-        new(
+    private static WindowsRenderAppearance ConvertAppearance(ThreeDmRenderAppearance appearance)
+    {
+        WindowsRenderPbrMaterial? physicallyBased = null;
+        if (appearance.PhysicallyBased is { } pbr)
+        {
+            physicallyBased = new WindowsRenderPbrMaterial(
+                pbr.BaseColorArgb,
+                CheckedUnitFloat(pbr.Metallic),
+                CheckedUnitFloat(pbr.Roughness),
+                CheckedUnitFloat(pbr.Alpha),
+                CheckedUnitFloat(pbr.Opacity),
+                CheckedUnitFloat(pbr.Clearcoat),
+                CheckedUnitFloat(pbr.ClearcoatRoughness),
+                pbr.Brdf);
+        }
+
+        var textures = appearance.Textures
+            .Select(texture => new WindowsRenderMaterialTexture(
+                texture.FileName,
+                texture.TextureType,
+                texture.IsEnabled,
+                texture.MappingChannelId,
+                texture.ProjectionMode,
+                texture.WrapU,
+                texture.WrapV,
+                texture.WrapW,
+                CheckedFloat(texture.RepeatU),
+                CheckedFloat(texture.RepeatV),
+                CheckedFloat(texture.OffsetU),
+                CheckedFloat(texture.OffsetV),
+                CheckedFloat(texture.RotationRadians)))
+            .ToArray();
+
+        return new WindowsRenderAppearance(
             appearance.ColorArgb,
             CheckedUnitFloat(appearance.Opacity),
             appearance.MaterialId,
             appearance.SpecularColorArgb,
             appearance.EmissionColorArgb,
             CheckedFloat(appearance.Shine),
-            CheckedFloat(appearance.Reflectivity));
+            CheckedFloat(appearance.Reflectivity))
+        {
+            PhysicallyBased = physicallyBased,
+            Textures = textures,
+        };
+    }
 
     private static WindowsRenderFloat3 Rebase(ThreeDmRenderVertex vertex, WindowsRenderOrigin origin) =>
         new(
