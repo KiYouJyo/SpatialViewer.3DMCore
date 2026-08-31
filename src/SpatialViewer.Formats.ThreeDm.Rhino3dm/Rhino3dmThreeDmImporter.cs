@@ -222,8 +222,6 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 definition.Name ?? string.Empty,
                 definition.Description ?? string.Empty,
                 string.IsNullOrWhiteSpace(definition.SourceArchive) ? null : definition.SourceArchive,
-                definition.UpdateType.ToString(),
-                definition.UnitSystem.ToString(),
                 definition.GetObjectIds()));
         }
 
