@@ -1,4 +1,5 @@
 using System.Drawing;
+using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.FileIO;
 using Rhino.Geometry;
@@ -98,6 +99,7 @@ public sealed class VisualFidelityImportTests
             Assert.Equal(0xFF020304u, importedMaterial.EmissionColorArgb);
             Assert.Equal(72, importedMaterial.Shine, 12);
             Assert.Equal(0.2, importedMaterial.Reflectivity, 12);
+            Assert.Null(importedMaterial.PhysicallyBased);
 
             var sceneObject = Assert.Single(document.Objects, item => item.Id == objectId);
             Assert.Equal(childLayerId, sceneObject.LayerId);
@@ -119,6 +121,77 @@ public sealed class VisualFidelityImportTests
             Assert.Equal(objectId, visibleMesh.SourceObjectId);
             Assert.Equal(0xFF0C50A0u, visibleMesh.Appearance.ColorArgb);
             Assert.Equal(materialId, visibleMesh.Appearance.MaterialId);
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsyncRoundTripsPhysicallyBasedMaterialAndTextureMetadata()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase5-pbr-{Guid.NewGuid():N}.3dm");
+        try
+        {
+            Guid materialId;
+            using (var model = new File3dm())
+            {
+                var material = new Material
+                {
+                    Name = "PBR Facade",
+                    DiffuseColor = Color.FromArgb(255, 40, 80, 120),
+                };
+                material.ToPhysicallyBased();
+                var pbr = material.PhysicallyBased;
+                pbr.BaseColor = new Color4f(0.2f, 0.4f, 0.6f, 0.8f);
+                pbr.Metallic = 0.65;
+                pbr.Roughness = 0.35;
+                pbr.Alpha = 0.75;
+                pbr.Opacity = 0.55;
+                pbr.Clearcoat = 0.45;
+                pbr.ClearcoatRoughness = 0.25;
+
+                var texture = new Texture
+                {
+                    FileName = "textures/facade-albedo.png",
+                };
+                Assert.True(material.SetTexture(texture, TextureType.Bitmap));
+
+                model.AllMaterials.Add(material);
+                var storedMaterial = model.AllMaterials.Single(item => item.Name == "PBR Facade");
+                materialId = storedMaterial.Id;
+
+                var attributes = new ObjectAttributes
+                {
+                    MaterialIndex = storedMaterial.Index,
+                    MaterialSource = ObjectMaterialSource.MaterialFromObject,
+                };
+                model.Objects.Add(new Rhino.Geometry.Point(new Rhino.Geometry.Point3d(1, 2, 3)), attributes);
+                Assert.True(model.Write(path, 8));
+            }
+
+            var document = await new Rhino3dmThreeDmImporter().ImportAsync(path);
+            var importedMaterial = Assert.Single(document.Materials, item => item.Id == materialId);
+            var pbrInfo = Assert.IsType<ThreeDmPhysicallyBasedMaterialInfo>(importedMaterial.PhysicallyBased);
+
+            Assert.Equal(0.2, pbrInfo.BaseColorR, 5);
+            Assert.Equal(0.4, pbrInfo.BaseColorG, 5);
+            Assert.Equal(0.6, pbrInfo.BaseColorB, 5);
+            Assert.Equal(0.8, pbrInfo.BaseColorA, 5);
+            Assert.Equal(0.65, pbrInfo.Metallic, 8);
+            Assert.Equal(0.35, pbrInfo.Roughness, 8);
+            Assert.Equal(0.75, pbrInfo.Alpha, 8);
+            Assert.Equal(0.55, pbrInfo.Opacity, 8);
+            Assert.Equal(0.45, pbrInfo.Clearcoat, 8);
+            Assert.Equal(0.25, pbrInfo.ClearcoatRoughness, 8);
+
+            var importedTexture = Assert.Single(importedMaterial.Textures, item => item.TextureType == "Bitmap");
+            Assert.EndsWith("facade-albedo.png", importedTexture.FileName, StringComparison.OrdinalIgnoreCase);
+            Assert.True(importedTexture.IsEnabled);
         }
         finally
         {
