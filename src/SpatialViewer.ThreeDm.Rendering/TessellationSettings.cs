@@ -69,6 +69,19 @@ public sealed record ThreeDmTessellationSettings(
         return Math.Max(fallback, PositiveModelFloor(modelAbsoluteTolerance));
     }
 
+    public double ResolveCacheChordTolerance(BoundingBox3d bounds, double modelAbsoluteTolerance = 0)
+    {
+        var resolved = ResolveChordTolerance(bounds, modelAbsoluteTolerance);
+        if (AbsoluteChordTolerance is > 0 || !(resolved > 0) || !double.IsFinite(resolved))
+        {
+            return resolved;
+        }
+
+        var exponent = Math.Floor(Math.Log2(resolved));
+        var bucket = Math.Pow(2, exponent);
+        return bucket > 0 && double.IsFinite(bucket) ? bucket : resolved;
+    }
+
     private static double PositiveModelFloor(double modelAbsoluteTolerance) =>
         modelAbsoluteTolerance > 0 && double.IsFinite(modelAbsoluteTolerance)
             ? modelAbsoluteTolerance * 0.25
