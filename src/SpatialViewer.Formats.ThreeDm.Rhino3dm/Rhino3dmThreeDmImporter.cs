@@ -65,6 +65,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         var layers = ReadLayers(model);
         var materials = ReadMaterials(model);
         var namedViews = ReadNamedViews(model);
+        var instanceDefinitions = ReadInstanceDefinitions(model);
         var objects = new List<ThreeDmSceneObject>(model.Objects.Count);
         var documentBounds = BoundingBox3d.Invalid;
 
@@ -156,6 +157,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             Layers = layers,
             Materials = materials,
             NamedViews = namedViews,
+            InstanceDefinitions = instanceDefinitions,
         };
     }
 
@@ -205,6 +207,24 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 ConvertVector(viewport.CameraUp),
                 ConvertPoint(viewport.TargetPoint),
                 viewport.IsPerspectiveProjection));
+        }
+
+        return result;
+    }
+
+    private static List<ThreeDmInstanceDefinitionInfo> ReadInstanceDefinitions(File3dm model)
+    {
+        var result = new List<ThreeDmInstanceDefinitionInfo>(model.AllInstanceDefinitions.Count);
+        foreach (var definition in model.AllInstanceDefinitions)
+        {
+            result.Add(new ThreeDmInstanceDefinitionInfo(
+                definition.Id,
+                definition.Name ?? string.Empty,
+                definition.Description ?? string.Empty,
+                string.IsNullOrWhiteSpace(definition.SourceArchive) ? null : definition.SourceArchive,
+                definition.UpdateType.ToString(),
+                definition.UnitSystem.ToString(),
+                definition.GetObjectIds()));
         }
 
         return result;
@@ -263,11 +283,12 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             Extrusion => ThreeDmGeometryKind.Extrusion,
             Mesh => ThreeDmGeometryKind.Mesh,
             SubD => ThreeDmGeometryKind.SubD,
+            InstanceReferenceGeometry => ThreeDmGeometryKind.InstanceReference,
+            Hatch => ThreeDmGeometryKind.Hatch,
             Curve => ThreeDmGeometryKind.Curve,
             Surface => ThreeDmGeometryKind.Surface,
             TextDot => ThreeDmGeometryKind.TextDot,
             AnnotationBase => ThreeDmGeometryKind.Annotation,
-            _ when geometry.GetType().Name.Contains("InstanceReference", StringComparison.Ordinal) => ThreeDmGeometryKind.InstanceReference,
             _ when geometry.GetType().Name.Contains("Light", StringComparison.Ordinal) => ThreeDmGeometryKind.Light,
             _ => ThreeDmGeometryKind.Unknown,
         };
