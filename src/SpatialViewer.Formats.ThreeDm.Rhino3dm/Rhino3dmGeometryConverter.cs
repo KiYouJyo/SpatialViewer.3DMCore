@@ -19,6 +19,8 @@ internal static class Rhino3dmGeometryConverter
             TextDot textDot => ConvertTextDot(textDot),
             AnnotationBase annotation => ConvertAnnotation(annotation),
             Hatch hatch => ConvertHatch(hatch),
+            Rhino.Geometry.Light light => ConvertLight(light),
+            ClippingPlaneSurface clippingPlane => ConvertClippingPlane(clippingPlane),
             Curve curve => ConvertCurve(curve),
             Surface surface => ConvertSurface(surface),
             _ => null,
@@ -163,8 +165,13 @@ internal static class Rhino3dmGeometryConverter
             textDot.FontHeight,
             ConvertBounds(textDot.GetBoundingBox(true)));
 
-    private static ThreeDmAnnotationGeometryData ConvertAnnotation(AnnotationBase annotation) =>
-        new(
+    private static ThreeDmAnnotationGeometryData ConvertAnnotation(AnnotationBase annotation)
+    {
+        var leaderPoints = annotation is Leader leader
+            ? leader.Points3D.Select(ConvertPoint).ToArray()
+            : Array.Empty<SpatialViewer.ThreeDm.Core.Point3d>();
+
+        return new ThreeDmAnnotationGeometryData(
             annotation.AnnotationType.ToString(),
             annotation.PlainText ?? string.Empty,
             annotation.RichText ?? string.Empty,
@@ -172,7 +179,9 @@ internal static class Rhino3dmGeometryConverter
             ConvertPlane(annotation.Plane),
             annotation.TextHeight,
             annotation.TextRotationRadians,
+            leaderPoints,
             ConvertBounds(annotation.GetBoundingBox(true)));
+    }
 
     private static ThreeDmHatchGeometryData ConvertHatch(Hatch hatch)
     {
@@ -186,6 +195,45 @@ internal static class Rhino3dmGeometryConverter
             outer,
             inner,
             ConvertBounds(hatch.GetBoundingBox(true)));
+    }
+
+    private static ThreeDmLightGeometryData ConvertLight(Rhino.Geometry.Light light) =>
+        new(
+            light.Name ?? string.Empty,
+            light.LightStyle.ToString(),
+            light.IsEnabled,
+            ConvertPoint(light.Location),
+            ConvertVector(light.Direction),
+            ToArgb(light.Diffuse),
+            light.Intensity,
+            light.ShadowIntensity,
+            light.HotSpot,
+            light.SpotAngleRadians,
+            light.Radius,
+            ConvertBounds(light.GetBoundingBox(true)));
+
+    private static ThreeDmClippingPlaneGeometryData ConvertClippingPlane(ClippingPlaneSurface clippingPlane)
+    {
+        var objectIds = Array.Empty<Guid>();
+        var layerIndices = Array.Empty<int>();
+        var isExclusionList = false;
+        if (clippingPlane.ParticipationListsEnabled)
+        {
+            clippingPlane.GetClipParticipation(out var objectParticipation, out var layerParticipation, out isExclusionList);
+            objectIds = objectParticipation.ToArray();
+            layerIndices = layerParticipation.ToArray();
+        }
+
+        return new ThreeDmClippingPlaneGeometryData(
+            ConvertSurface(clippingPlane),
+            clippingPlane.ViewportIds(),
+            clippingPlane.ParticipationListsEnabled,
+            objectIds,
+            layerIndices,
+            isExclusionList,
+            clippingPlane.PlaneDepthEnabled,
+            clippingPlane.PlaneDepth,
+            ConvertBounds(clippingPlane.GetBoundingBox(true)));
     }
 
     private static List<ThreeDmCurveGeometryData> ConvertBoundaryCurves(IEnumerable<Curve> curves)
