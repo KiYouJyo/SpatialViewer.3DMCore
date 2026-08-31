@@ -16,7 +16,14 @@ public sealed class ThreeDmVisualRenderSceneBuilder
     {
         ArgumentNullException.ThrowIfNull(document);
         settings ??= new ThreeDmVisualRenderSettings();
-        var geometryScene = _geometryBuilder.Build(document, settings.Tessellation);
+
+        var geometryDocument = document with
+        {
+            Objects = document.Objects
+                .Select(item => item with { IsVisible = item.SourceObjectVisible ?? item.IsVisible })
+                .ToArray(),
+        };
+        var geometryScene = _geometryBuilder.Build(geometryDocument, settings.Tessellation);
         var appearanceScene = ThreeDmVisualFidelityResolver.Apply(document, geometryScene);
         return ThreeDmDisplayModeResolver.Apply(document, appearanceScene, settings.DisplayMode);
     }
