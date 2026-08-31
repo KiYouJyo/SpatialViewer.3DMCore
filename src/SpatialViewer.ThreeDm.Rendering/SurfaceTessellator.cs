@@ -35,7 +35,6 @@ public static class ThreeDmNurbsSurfaceTessellator
         var vertexCount = checked(uValues.Length * vValues.Length);
         var vertices = new ThreeDmRenderVertex[vertexCount];
         var textureCoordinates = new ThreeDmRenderTextureCoordinate[vertexCount];
-        var evaluatedPoints = new Point3d[vertexCount];
         var domainU = NurbsSurfaceEvaluator.GetDomainU(surface);
         var domainV = NurbsSurfaceEvaluator.GetDomainV(surface);
 
@@ -45,7 +44,6 @@ public static class ThreeDmNurbsSurfaceTessellator
             {
                 var index = GridIndex(uIndex, vIndex, vValues.Length);
                 var point = EvaluateCached(surface, uValues[uIndex], vValues[vIndex], pointCache);
-                evaluatedPoints[index] = point;
                 vertices[index] = new ThreeDmRenderVertex(point.X, point.Y, point.Z);
                 textureCoordinates[index] = new ThreeDmRenderTextureCoordinate(
                     NormalizeParameter(uValues[uIndex], domainU.Start, domainU.End),
@@ -53,8 +51,8 @@ public static class ThreeDmNurbsSurfaceTessellator
             }
         }
 
-        var normals = BuildNormals(evaluatedPoints, uValues.Length, vValues.Length);
         var indices = BuildIndices(uValues.Length, vValues.Length);
+        var normals = BuildAreaWeightedNormals(vertices, indices);
 
         return new ThreeDmRenderMesh(sourceObjectId, vertices, indices)
         {
@@ -207,21 +205,56 @@ public static class ThreeDmNurbsSurfaceTessellator
         return indices;
     }
 
-    private static ThreeDmRenderNormal[] BuildNormals(Point3d[] points, int countU, int countV)
+    private static ThreeDmRenderNormal[] BuildAreaWeightedNormals(ThreeDmRenderVertex[] vertices, int[] indices)
     {
-        var normals = new ThreeDmRenderNormal[points.Length];
-        for (var u = 0; u < countU; u++)
+        var accumulatedX = new double[vertices.Length];
+        var accumulatedY = new double[vertices.Length];
+        var accumulatedZ = new double[vertices.Length];
+
+        for (var index = 0; index + 2 < indices.Length; index += 3)
         {
-            for (var v = 0; v < countV; v++)
+            var aIndex = indices[index];
+            var bIndex = indices[index + 1];
+            var cIndex = indices[index + 2];
+            var a = vertices[aIndex];
+            var b = vertices[bIndex];
+            var c = vertices[cIndex];
+            var abX = b.X - a.X;
+            var abY = b.Y - a.Y;
+            var abZ = b.Z - a.Z;
+            var acX = c.X - a.X;
+            var acY = c.Y - a.Y;
+            var acZ = c.Z - a.Z;
+            var normalX = (abY * acZ) - (abZ * acY);
+            var normalY = (abZ * acX) - (abX * acZ);
+            var normalZ = (abX * acY) - (abY * acX);
+
+            if (!double.IsFinite(normalX) || !double.IsFinite(normalY) || !double.IsFinite(normalZ))
             {
-                var left = points[GridIndex(Math.Max(0, u - 1), v, countV)];
-                var right = points[GridIndex(Math.Min(countU - 1, u + 1), v, countV)];
-                var bottom = points[GridIndex(u, Math.Max(0, v - 1), countV)];
-                var top = points[GridIndex(u, Math.Min(countV - 1, v + 1), countV)];
-                var du = Subtract(right, left);
-                var dv = Subtract(top, bottom);
-                normals[GridIndex(u, v, countV)] = Normalize(Cross(du, dv));
+                continue;
             }
+
+            accumulatedX[aIndex] += normalX;
+            accumulatedY[aIndex] += normalY;
+            accumulatedZ[aIndex] += normalZ;
+            accumulatedX[bIndex] += normalX;
+            accumulatedY[bIndex] += normalY;
+            accumulatedZ[bIndex] += normalZ;
+            accumulatedX[cIndex] += normalX;
+            accumulatedY[cIndex] += normalY;
+            accumulatedZ[cIndex] += normalZ;
+        }
+
+        var normals = new ThreeDmRenderNormal[vertices.Length];
+        for (var index = 0; index < normals.Length; index++)
+        {
+            var x = accumulatedX[index];
+            var y = accumulatedY[index];
+            var z = accumulatedZ[index];
+            var length = Math.Sqrt((x * x) + (y * y) + (z * z));
+            normals[index] = length > 1e-15 && double.IsFinite(length)
+                ? new ThreeDmRenderNormal(x / length, y / length, z / length)
+                : new ThreeDmRenderNormal(0, 0, 0);
         }
 
         return normals;
@@ -247,22 +280,5 @@ public static class ThreeDmNurbsSurfaceTessellator
         var dy = left.Y - right.Y;
         var dz = left.Z - right.Z;
         return Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
-    }
-
-    private static Vector3d Subtract(Point3d left, Point3d right) =>
-        new(left.X - right.X, left.Y - right.Y, left.Z - right.Z);
-
-    private static Vector3d Cross(Vector3d left, Vector3d right) =>
-        new(
-            (left.Y * right.Z) - (left.Z * right.Y),
-            (left.Z * right.X) - (left.X * right.Z),
-            (left.X * right.Y) - (left.Y * right.X));
-
-    private static ThreeDmRenderNormal Normalize(Vector3d vector)
-    {
-        var length = Math.Sqrt((vector.X * vector.X) + (vector.Y * vector.Y) + (vector.Z * vector.Z));
-        return length > 1e-15 && double.IsFinite(length)
-            ? new ThreeDmRenderNormal(vector.X / length, vector.Y / length, vector.Z / length)
-            : new ThreeDmRenderNormal(0, 0, 0);
     }
 }
