@@ -16,6 +16,7 @@ public enum ThreeDmGeometryKind
     Hatch,
     InstanceReference,
     Light,
+    ClippingPlane,
 }
 
 public enum ThreeDmDiagnosticSeverity
