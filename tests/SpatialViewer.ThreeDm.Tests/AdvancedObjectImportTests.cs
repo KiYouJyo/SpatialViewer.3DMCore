@@ -20,6 +20,18 @@ public sealed class AdvancedObjectImportTests
                     new Rhino.Geometry.Point3d(0, 0, 0),
                     new Rhino.Geometry.Point3d(10, 8, 6)));
                 Assert.NotNull(boxSource);
+
+                using var cachedRenderMesh = new Mesh();
+                cachedRenderMesh.Vertices.Add(0, 0, 0);
+                cachedRenderMesh.Vertices.Add(10, 0, 0);
+                cachedRenderMesh.Vertices.Add(10, 8, 0);
+                cachedRenderMesh.Vertices.Add(0, 8, 0);
+                cachedRenderMesh.Faces.AddFace(0, 1, 2, 3);
+                cachedRenderMesh.Normals.Add(0, 0, -1);
+                cachedRenderMesh.Normals.Add(0, 0, -1);
+                cachedRenderMesh.Normals.Add(0, 0, -1);
+                cachedRenderMesh.Normals.Add(0, 0, -1);
+                Assert.True(boxSource.Faces[0].SetMesh(MeshType.Render, cachedRenderMesh));
                 Add(model, boxSource, "BrepBox");
 
                 using var textDotSource = new TextDot("Door A", new Rhino.Geometry.Point3d(0, 12, 0))
@@ -93,7 +105,8 @@ public sealed class AdvancedObjectImportTests
                 Assert.True(model.Write(path, 8));
             }
 
-            var document = await new Rhino3dmThreeDmImporter().ImportAsync(path);
+            var importer = new Rhino3dmThreeDmImporter();
+            var document = await importer.ImportAsync(path);
 
             var brepData = Geometry<ThreeDmBrepGeometryData>(document, "BrepBox");
             Assert.True(brepData.IsSolid);
@@ -108,6 +121,16 @@ public sealed class AdvancedObjectImportTests
                 Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.StartVertexIndex);
                 Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.EndVertexIndex);
             });
+
+            var embeddedMesh = Assert.Single(brepData.RenderMeshes);
+            Assert.Equal(0, embeddedMesh.SourceSubobjectIndex);
+            Assert.Equal(4, embeddedMesh.Mesh.Vertices.Count);
+            Assert.Single(embeddedMesh.Mesh.Faces);
+
+            var withoutRenderMeshes = await importer.ImportAsync(
+                path,
+                new ThreeDmImportOptions(IncludeRenderMeshes: false));
+            Assert.Empty(Geometry<ThreeDmBrepGeometryData>(withoutRenderMeshes, "BrepBox").RenderMeshes);
 
             var textDotData = Geometry<ThreeDmTextDotGeometryData>(document, "TextDot");
             Assert.Equal("Door A", textDotData.Text);

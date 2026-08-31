@@ -5,10 +5,33 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 ## [Unreleased]
 
 ### Planned
-- Add adaptive tessellation and render-scene generation.
 - Add visual-fidelity resolution for layer/object colors, materials and wire/edge modes.
 - Add real-world architectural/product Rhino fixture coverage, including Rhino-produced SubD, Light and ClippingPlane samples.
 - Add large-model performance, progressive-loading and malformed-file baselines.
+
+## [0.5.0] - 2026-08-31
+
+### Added
+- Source-independent render-scene generation for points, point clouds, analytic/general curves, meshes, standalone NURBS surfaces, Brep render meshes, extrusions and nested instances.
+- Draft / Normal / High tessellation presets with camera-relative, model-tolerance-relative or explicit absolute chord tolerances.
+- Adaptive analytic Arc/Circle/Ellipse tessellation that retains the source curve type and full plane basis instead of permanently flattening source geometry.
+- Independent rational/non-rational NURBS curve and tensor-product NURBS surface evaluation from neutral Core contracts, including openNURBS superfluous knot boundaries.
+- Knot-span-aware adaptive standalone NURBS surface tessellation with crack-free parameter grids, per-direction budgets, indexed triangles, parametric UVs and area-weighted vertex normals.
+- Embedded Rhino render-mesh reuse for trimmed Breps and Extrusions, with exact Brep-edge/analytic-wire fallbacks and structured diagnostics when no fill mesh is stored.
+- Nested InstanceDefinition / InstanceReference render expansion with composed 4×4 transforms and retained instance paths for downstream picking/selection.
+- Tessellation caches keyed by source geometry identity and quality settings, including conservative camera-relative tolerance buckets to avoid near-duplicate meshes while zooming.
+- Double-precision neutral render data plus Windows upload projection with origin rebasing before conversion to float buffers for large-coordinate models.
+
+### Tests
+- Added analytic curve, independent NURBS evaluation, rotated-plane, mesh triangulation, nested instance and cache regression coverage.
+- Added generated Rhino 8 `.3dm` round-trip coverage for embedded Brep render meshes and a rational curved NURBS sphere rendered entirely through the neutral evaluator/tessellator.
+- Added large-coordinate Windows upload tests and closed-surface normal stability checks.
+- Added symmetric Brep/Extrusion embedded-render-mesh and explicit-fallback tests.
+
+### Notes
+- Standalone surfaces can be tessellated independently because they are untrimmed. Trimmed Brep faces are never filled by ignoring their trims; they use stored Rhino render meshes or remain exact edge/wire geometry with a diagnostic.
+- Surface UVs in this phase are normalized parametric coordinates. Material texture mapping and render-content fidelity belong to Phase 5.
+- Smooth SubD limit-surface meshing remains on a future compatible display-mesh path; Phase 4 preserves and renders the SubD control net rather than inventing a non-Rhino-compatible limit evaluator.
 
 ## [0.4.0] - 2026-08-31
 

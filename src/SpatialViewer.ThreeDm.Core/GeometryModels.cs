@@ -28,17 +28,25 @@ public enum ThreeDmCurveForm
 }
 
 public sealed record ThreeDmArcGeometryData(
-    Point3d Center,
-    Vector3d Normal,
+    Plane3d Plane,
     double Radius,
     double StartAngleRadians,
-    double EndAngleRadians);
+    double EndAngleRadians)
+{
+    public Point3d Center => Plane.Origin;
+
+    public Vector3d Normal => Plane.ZAxis;
+}
 
 public sealed record ThreeDmEllipseGeometryData(
-    Point3d Center,
-    Vector3d Normal,
+    Plane3d Plane,
     double Radius1,
-    double Radius2);
+    double Radius2)
+{
+    public Point3d Center => Plane.Origin;
+
+    public Vector3d Normal => Plane.ZAxis;
+}
 
 public sealed record ThreeDmNurbsCurveData(
     int Degree,
@@ -46,7 +54,9 @@ public sealed record ThreeDmNurbsCurveData(
     bool IsClosed,
     bool IsPeriodic,
     IReadOnlyList<ThreeDmWeightedPoint3d> ControlPoints,
-    IReadOnlyList<double> Knots);
+    IReadOnlyList<double> Knots,
+    double StartSuperfluousKnot,
+    double EndSuperfluousKnot);
 
 public sealed record ThreeDmCurveGeometryData(
     ThreeDmCurveForm Form,
@@ -71,7 +81,16 @@ public sealed record ThreeDmNurbsSurfaceGeometryData(
     IReadOnlyList<double> KnotsU,
     IReadOnlyList<double> KnotsV,
     BoundingBox3d Bounds)
-    : ThreeDmGeometryData(ThreeDmGeometryKind.Surface, Bounds);
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Surface, Bounds)
+{
+    public double? StartSuperfluousKnotU { get; init; }
+
+    public double? EndSuperfluousKnotU { get; init; }
+
+    public double? StartSuperfluousKnotV { get; init; }
+
+    public double? EndSuperfluousKnotV { get; init; }
+}
 
 public sealed record ThreeDmExtrusionGeometryData(
     Point3d PathStart,
@@ -82,7 +101,11 @@ public sealed record ThreeDmExtrusionGeometryData(
     bool IsCappedAtTop,
     IReadOnlyList<ThreeDmCurveGeometryData> Profiles,
     BoundingBox3d Bounds)
-    : ThreeDmGeometryData(ThreeDmGeometryKind.Extrusion, Bounds);
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Extrusion, Bounds)
+{
+    public IReadOnlyList<ThreeDmEmbeddedRenderMeshData> RenderMeshes { get; init; } =
+        Array.Empty<ThreeDmEmbeddedRenderMeshData>();
+}
 
 public sealed record ThreeDmMeshFace(int A, int B, int C, int? D = null);
 
