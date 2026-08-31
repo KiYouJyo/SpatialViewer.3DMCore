@@ -471,7 +471,7 @@ public sealed class ThreeDmRenderSceneBuilder
             (left.M30 * right.M02) + (left.M31 * right.M12) + (left.M32 * right.M22) + (left.M33 * right.M32),
             (left.M30 * right.M03) + (left.M31 * right.M13) + (left.M32 * right.M23) + (left.M33 * right.M33));
 
-    private static IReadOnlyList<Guid> AppendPath(IReadOnlyList<Guid> path, Guid instanceId)
+    private static Guid[] AppendPath(IReadOnlyList<Guid> path, Guid instanceId)
     {
         var result = new Guid[path.Count + 1];
         for (var i = 0; i < path.Count; i++)
