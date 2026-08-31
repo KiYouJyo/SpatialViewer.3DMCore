@@ -8,6 +8,52 @@ public readonly record struct WindowsRenderFloat3(float X, float Y, float Z);
 
 public readonly record struct WindowsRenderFloat2(float X, float Y);
 
+public readonly record struct WindowsRenderPbrMaterial(
+    float BaseColorR,
+    float BaseColorG,
+    float BaseColorB,
+    float BaseColorA,
+    float Metallic,
+    float Roughness,
+    float Alpha,
+    float Opacity,
+    float Clearcoat,
+    float ClearcoatRoughness,
+    string Brdf);
+
+public sealed record WindowsRenderMaterialTexture(
+    string FileName,
+    string TextureType,
+    bool IsEnabled,
+    int MappingChannelId,
+    string ProjectionMode,
+    string WrapU,
+    string WrapV,
+    string WrapW,
+    float RepeatU,
+    float RepeatV,
+    float OffsetU,
+    float OffsetV,
+    float RotationRadians);
+
+public readonly record struct WindowsRenderAppearance(
+    uint ColorArgb,
+    float Opacity,
+    Guid? MaterialId,
+    uint? SpecularColorArgb,
+    uint? EmissionColorArgb,
+    float Shine,
+    float Reflectivity)
+{
+    public WindowsRenderPbrMaterial? PhysicallyBased { get; init; }
+
+    public IReadOnlyList<WindowsRenderMaterialTexture> Textures { get; init; } =
+        Array.Empty<WindowsRenderMaterialTexture>();
+
+    public static WindowsRenderAppearance Default { get; } =
+        new(0xFFFFFFFF, 1, null, null, null, 0, 0);
+}
+
 public sealed record WindowsRenderMeshUpload(
     Guid SourceObjectId,
     IReadOnlyList<WindowsRenderFloat3> Vertices,
@@ -21,6 +67,8 @@ public sealed record WindowsRenderMeshUpload(
 
     public uint? ColorArgb { get; init; }
 
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+
     public int? SourceSubobjectIndex { get; init; }
 
     public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
@@ -32,12 +80,18 @@ public sealed record WindowsRenderCurveUpload(
     IReadOnlyList<WindowsRenderFloat3> Points,
     bool IsClosed,
     int? SourceSubobjectIndex,
-    IReadOnlyList<Guid> InstancePath);
+    IReadOnlyList<Guid> InstancePath)
+{
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+}
 
 public sealed record WindowsRenderPointSetUpload(
     Guid SourceObjectId,
     IReadOnlyList<WindowsRenderFloat3> Points,
-    IReadOnlyList<Guid> InstancePath);
+    IReadOnlyList<Guid> InstancePath)
+{
+    public WindowsRenderAppearance Appearance { get; init; } = WindowsRenderAppearance.Default;
+}
 
 public sealed record WindowsRenderSceneUpload(
     WindowsRenderOrigin Origin,
@@ -75,6 +129,7 @@ public static class WindowsThreeDmUploadProjection
                 .ToArray(),
             MaterialId = mesh.MaterialId,
             ColorArgb = mesh.ColorArgb,
+            Appearance = ConvertAppearance(mesh.Appearance),
             SourceSubobjectIndex = mesh.SourceSubobjectIndex,
             InstancePath = mesh.InstancePath.ToArray(),
         };
@@ -86,13 +141,69 @@ public static class WindowsThreeDmUploadProjection
             curve.Points.Select(point => Rebase(point, origin)).ToArray(),
             curve.IsClosed,
             curve.SourceSubobjectIndex,
-            curve.InstancePath.ToArray());
+            curve.InstancePath.ToArray())
+        {
+            Appearance = ConvertAppearance(curve.Appearance),
+        };
 
     private static WindowsRenderPointSetUpload ProjectPointSet(ThreeDmRenderPointSet pointSet, WindowsRenderOrigin origin) =>
         new(
             pointSet.SourceObjectId,
             pointSet.Points.Select(point => Rebase(point, origin)).ToArray(),
-            pointSet.InstancePath.ToArray());
+            pointSet.InstancePath.ToArray())
+        {
+            Appearance = ConvertAppearance(pointSet.Appearance),
+        };
+
+    private static WindowsRenderAppearance ConvertAppearance(ThreeDmRenderAppearance appearance)
+    {
+        WindowsRenderPbrMaterial? physicallyBased = null;
+        if (appearance.PhysicallyBased is { } pbr)
+        {
+            physicallyBased = new WindowsRenderPbrMaterial(
+                CheckedUnitFloat(pbr.BaseColorR),
+                CheckedUnitFloat(pbr.BaseColorG),
+                CheckedUnitFloat(pbr.BaseColorB),
+                CheckedUnitFloat(pbr.BaseColorA),
+                CheckedUnitFloat(pbr.Metallic),
+                CheckedUnitFloat(pbr.Roughness),
+                CheckedUnitFloat(pbr.Alpha),
+                CheckedUnitFloat(pbr.Opacity),
+                CheckedUnitFloat(pbr.Clearcoat),
+                CheckedUnitFloat(pbr.ClearcoatRoughness),
+                pbr.Brdf);
+        }
+
+        var textures = appearance.Textures
+            .Select(texture => new WindowsRenderMaterialTexture(
+                texture.FileName,
+                texture.TextureType,
+                texture.IsEnabled,
+                texture.MappingChannelId,
+                texture.ProjectionMode,
+                texture.WrapU,
+                texture.WrapV,
+                texture.WrapW,
+                CheckedFloat(texture.RepeatU),
+                CheckedFloat(texture.RepeatV),
+                CheckedFloat(texture.OffsetU),
+                CheckedFloat(texture.OffsetV),
+                CheckedFloat(texture.RotationRadians)))
+            .ToArray();
+
+        return new WindowsRenderAppearance(
+            appearance.ColorArgb,
+            CheckedUnitFloat(appearance.Opacity),
+            appearance.MaterialId,
+            appearance.SpecularColorArgb,
+            appearance.EmissionColorArgb,
+            CheckedFloat(appearance.Shine),
+            CheckedFloat(appearance.Reflectivity))
+        {
+            PhysicallyBased = physicallyBased,
+            Textures = textures,
+        };
+    }
 
     private static WindowsRenderFloat3 Rebase(ThreeDmRenderVertex vertex, WindowsRenderOrigin origin) =>
         new(
@@ -100,11 +211,21 @@ public static class WindowsThreeDmUploadProjection
             CheckedFloat(vertex.Y - origin.Y),
             CheckedFloat(vertex.Z - origin.Z));
 
+    private static float CheckedUnitFloat(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new InvalidDataException("Render appearance value must be finite.");
+        }
+
+        return (float)Math.Clamp(value, 0, 1);
+    }
+
     private static float CheckedFloat(double value)
     {
         if (!double.IsFinite(value) || value > float.MaxValue || value < -float.MaxValue)
         {
-            throw new InvalidDataException("Render coordinate cannot be represented by the Windows float upload format.");
+            throw new InvalidDataException("Render value cannot be represented by the Windows float upload format.");
         }
 
         return (float)value;

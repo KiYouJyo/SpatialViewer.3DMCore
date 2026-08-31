@@ -93,11 +93,27 @@ Implemented:
 
 ## Phase 5 — Visual fidelity
 
-- By-layer / by-object color resolution.
-- Material transparency and basic PBR-compatible properties where available.
-- Layer visibility inheritance.
-- Edge/wire modes suitable for architectural Rhino files.
-- Ground-plane/environment/render-content metadata only where it materially improves viewing.
+**Status: completed in 0.6.0**
+
+Implemented:
+
+- Source-independent color-source resolution for ByLayer, ByObject, ByMaterial and ByParent semantics.
+- Material-source resolution for object, layer and parent inheritance, including layer render-material references.
+- Parent/child layer visibility inheritance with cycle protection.
+- Separate source-object visibility and effective display visibility so layer overrides can reveal already-imported geometry without mutating source semantics.
+- Legacy material display properties: diffuse/transparency, specular/emission, shine and reflectivity.
+- PBR metadata only when Rhino marks the material as physically based, preserving floating-point base RGBA plus metallic, roughness, alpha, opacity, clearcoat, clearcoat roughness and BRDF.
+- Material texture-slot metadata including filename, type, enabled state, mapping channel, projection/wrap, repeat/offset and rotation.
+- Backend-neutral appearance attached to mesh, curve and point render primitives after geometry-cache generation.
+- `Shaded`, `ShadedWithEdges` and `Wireframe` display policies. Semantic Brep/Extrusion/SubD wires are preferred when available; generic mesh/surface wireframe falls back to deduplicated triangle edges.
+- Windows upload contracts for resolved appearance, legacy material parameters, PBR parameters and texture metadata.
+- A dedicated visual render-scene builder that reuses Phase 4 geometry/tessellation caches while resolving current layer/material/instance appearance afterward.
+
+**Regression coverage:** generated Core/Rendering tests cover ByLayer, ColorFromMaterial, nested ByParent appearance, ancestor-layer hiding, display modes, Windows appearance/PBR/texture upload and post-import layer re-enable behavior. Real Rhino 8 `.3dm` round-trip tests cover layer render materials, legacy material parameters, physically based material conversion/parameters and texture filename metadata.
+
+**Boundaries:** 0.6.0 preserves material and texture inputs but does not claim final Rhino texture-coordinate mapping, image loading, environment/ground-plane reproduction or Rhino Render/Cycles/RDK shader parity. PBR base color stays floating point through neutral contracts rather than being quantized to 8-bit display color. Smooth SubD limit-surface display remains dependent on a future compatible Rhino display-mesh path.
+
+**Exit criteria:** the viewer can resolve source display colors/materials across layers and nested instances, respect hierarchical visibility, switch useful architectural shaded/wire modes without rebuilding source geometry, and hand resolved legacy/PBR/texture inputs to a Windows renderer without reinterpreting Rhino document tables in the UI layer.
 
 ## Phase 6 — Performance and robustness
 

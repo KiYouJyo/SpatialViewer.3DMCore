@@ -21,6 +21,8 @@ public sealed record ThreeDmRenderPointSet(
     Guid SourceObjectId,
     IReadOnlyList<ThreeDmRenderVertex> Points)
 {
+    public ThreeDmRenderAppearance Appearance { get; init; } = ThreeDmRenderAppearance.Default;
+
     public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
 }
 
@@ -32,6 +34,8 @@ public sealed record ThreeDmRenderCurve(
     double TargetChordTolerance,
     int? SourceSubobjectIndex = null)
 {
+    public ThreeDmRenderAppearance Appearance { get; init; } = ThreeDmRenderAppearance.Default;
+
     public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
 }
 
@@ -47,6 +51,8 @@ public sealed record ThreeDmRenderMesh(
     public Guid? MaterialId { get; init; }
 
     public uint? ColorArgb { get; init; }
+
+    public ThreeDmRenderAppearance Appearance { get; init; } = ThreeDmRenderAppearance.Default;
 
     public int? SourceSubobjectIndex { get; init; }
 

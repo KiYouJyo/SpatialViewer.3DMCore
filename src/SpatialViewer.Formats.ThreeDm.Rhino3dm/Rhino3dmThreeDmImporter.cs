@@ -63,6 +63,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
     {
         var diagnostics = new List<ThreeDmImportDiagnostic>();
         var layers = ReadLayers(model);
+        var layersById = layers.ToDictionary(item => item.Id);
         var materials = ReadMaterials(model);
         var namedViews = ReadNamedViews(model);
         var instanceDefinitions = ReadInstanceDefinitions(model);
@@ -87,7 +88,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
             var layerId = ResolveLayerId(model, attributes.LayerIndex);
             var materialId = ResolveMaterialId(model, attributes.MaterialIndex);
             var sourceVisible = attributes.Visible;
-            var layerVisible = ResolveLayerVisibility(model, attributes.LayerIndex);
+            var layerVisible = IsLayerEffectivelyVisible(layerId, layersById);
             var isVisible = sourceVisible && layerVisible;
 
             if (!options.IncludeHiddenObjects && !isVisible)
@@ -133,7 +134,10 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 ToArgb(attributes.ObjectColor),
                 attributes.ColorSource.ToString(),
                 attributes.MaterialSource.ToString(),
-                semanticGeometry));
+                semanticGeometry)
+            {
+                SourceObjectVisible = sourceVisible,
+            });
         }
 
         return new ThreeDmSceneDocument(
@@ -173,7 +177,10 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 layer.IsVisible,
                 layer.IsLocked,
                 ToArgb(layer.Color),
-                layer.LinetypeIndex));
+                layer.LinetypeIndex)
+            {
+                RenderMaterialId = ResolveMaterialId(model, layer.RenderMaterialIndex),
+            });
         }
 
         return result;
@@ -184,11 +191,50 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         var result = new List<ThreeDmMaterialInfo>(model.AllMaterials.Count);
         foreach (var material in model.AllMaterials)
         {
+            var physicallyBased = material.IsPhysicallyBased ? material.PhysicallyBased : null;
+            var textures = material.GetTextures()
+                .Select(texture => new ThreeDmMaterialTextureInfo(
+                    texture.FileName ?? string.Empty,
+                    texture.TextureType.ToString(),
+                    texture.Enabled,
+                    texture.MappingChannelId,
+                    texture.ProjectionMode.ToString(),
+                    texture.WrapU.ToString(),
+                    texture.WrapV.ToString(),
+                    texture.WrapW.ToString(),
+                    texture.Repeat.X,
+                    texture.Repeat.Y,
+                    texture.Offset.X,
+                    texture.Offset.Y,
+                    texture.Rotation))
+                .ToArray();
+
             result.Add(new ThreeDmMaterialInfo(
                 material.Id,
                 material.Name ?? string.Empty,
                 ToArgb(material.DiffuseColor),
-                material.Transparency));
+                material.Transparency)
+            {
+                SpecularColorArgb = ToArgb(material.SpecularColor),
+                EmissionColorArgb = ToArgb(material.EmissionColor),
+                Shine = material.Shine,
+                Reflectivity = material.Reflectivity,
+                PhysicallyBased = physicallyBased is null
+                    ? null
+                    : new ThreeDmPhysicallyBasedMaterialInfo(
+                        physicallyBased.BaseColor.R,
+                        physicallyBased.BaseColor.G,
+                        physicallyBased.BaseColor.B,
+                        physicallyBased.BaseColor.A,
+                        physicallyBased.Metallic,
+                        physicallyBased.Roughness,
+                        physicallyBased.Alpha,
+                        physicallyBased.Opacity,
+                        physicallyBased.Clearcoat,
+                        physicallyBased.ClearcoatRoughness,
+                        physicallyBased.BRDF.ToString()),
+                Textures = textures,
+            });
         }
 
         return result;
@@ -244,15 +290,33 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
         return layer.Id;
     }
 
-    private static bool ResolveLayerVisibility(File3dm model, int layerIndex)
+    private static bool IsLayerEffectivelyVisible(
+        Guid? layerId,
+        Dictionary<Guid, ThreeDmLayerInfo> layersById)
     {
-        if (layerIndex < 0)
+        if (layerId is null)
         {
             return true;
         }
 
-        var layer = model.AllLayers.FindIndex(layerIndex);
-        return layer is null || layer.IsVisible;
+        var visited = new HashSet<Guid>();
+        var currentId = layerId;
+        while (currentId is Guid id && layersById.TryGetValue(id, out var layer))
+        {
+            if (!visited.Add(id))
+            {
+                return false;
+            }
+
+            if (!layer.IsVisible)
+            {
+                return false;
+            }
+
+            currentId = layer.ParentLayerId;
+        }
+
+        return true;
     }
 
     private static Guid? ResolveMaterialId(File3dm model, int materialIndex)
