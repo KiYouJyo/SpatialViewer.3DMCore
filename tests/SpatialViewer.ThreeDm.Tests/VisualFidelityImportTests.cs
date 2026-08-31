@@ -68,18 +68,12 @@ public sealed class VisualFidelityImportTests
                     ObjectColor = Color.Magenta,
                     Visible = true,
                 };
-                objectId = model.Objects.Add(
-                    new Mesh
-                    {
-                        Vertices =
-                        {
-                            new Rhino.Geometry.Point3f(0, 0, 0),
-                            new Rhino.Geometry.Point3f(1, 0, 0),
-                            new Rhino.Geometry.Point3f(0, 1, 0),
-                        },
-                        Faces = { new MeshFace(0, 1, 2) },
-                    },
-                    attributes);
+                var mesh = new Mesh();
+                mesh.Vertices.Add(0, 0, 0);
+                mesh.Vertices.Add(1, 0, 0);
+                mesh.Vertices.Add(0, 1, 0);
+                mesh.Faces.AddFace(0, 1, 2);
+                objectId = model.Objects.Add(mesh, attributes);
 
                 Assert.NotEqual(Guid.Empty, objectId);
                 Assert.True(model.Write(path, 8));
