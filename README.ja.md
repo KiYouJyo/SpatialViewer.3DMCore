@@ -4,7 +4,7 @@
 
 SpatialViewer 向けの独立した Rhino 3DM ビューアー内核です。本リポジトリでは 3DM 読み込みアダプター、Rhino ドキュメント意味モデル、3D ジオメトリ／シーン変換、レンダリング抽象、回帰テストを管理します。WinUI 3 の製品 UI は `KiYouJyo/SpatialViewer` に残します。
 
-> 現段階では `SpatialViewer.CadCore` と同じ独立ビルド境界とリポジトリ骨格を構築します。最初の読み込みアダプターは McNeel 公式 `Rhino3dm` を利用し、レイヤー、属性、インスタンス、Curve/NURBS、Brep、Extrusion、Mesh、SubD、マテリアル、ビュー情報を安定して取り込むことを優先します。
+> 現在のバージョンは 0.6.0 で、Phase 5 Visual Fidelity まで完了しています。Rhino3dm 読み込み、意味ジオメトリ、Brep／インスタンス／高度オブジェクト、独立 NURBS 評価と適応的な派生ジオメトリ、レイヤー／マテリアル／ByParent 外観解決、PBR／テクスチャメタデータ、Shaded／Wireframe のレンダーシーン契約を実装済みです。次の Phase 6 ではバックグラウンド解析、段階的シーン提供、大規模モデルのメモリ／性能、異常ファイル防御を進めます。
 
 ## 設計原則
 
