@@ -11,6 +11,11 @@ public sealed record ThreeDmRenderAppearance(
     double Shine = 0,
     double Reflectivity = 0)
 {
+    public ThreeDmPhysicallyBasedMaterialInfo? PhysicallyBased { get; init; }
+
+    public IReadOnlyList<ThreeDmMaterialTextureInfo> Textures { get; init; } =
+        Array.Empty<ThreeDmMaterialTextureInfo>();
+
     public static ThreeDmRenderAppearance Default { get; } = new(0xFFFFFFFF, 1, null);
 }
 
@@ -40,7 +45,11 @@ internal static class ThreeDmAppearanceResolver
             material?.SpecularColorArgb,
             material?.EmissionColorArgb,
             material?.Shine ?? 0,
-            material?.Reflectivity ?? 0);
+            material?.Reflectivity ?? 0)
+        {
+            PhysicallyBased = material?.PhysicallyBased,
+            Textures = material?.Textures ?? Array.Empty<ThreeDmMaterialTextureInfo>(),
+        };
     }
 
     public static bool IsLayerEffectivelyVisible(
