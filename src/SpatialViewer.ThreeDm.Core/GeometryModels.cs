@@ -92,7 +92,11 @@ public sealed record ThreeDmExtrusionGeometryData(
     bool IsCappedAtTop,
     IReadOnlyList<ThreeDmCurveGeometryData> Profiles,
     BoundingBox3d Bounds)
-    : ThreeDmGeometryData(ThreeDmGeometryKind.Extrusion, Bounds);
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Extrusion, Bounds)
+{
+    public IReadOnlyList<ThreeDmEmbeddedRenderMeshData> RenderMeshes { get; init; } =
+        Array.Empty<ThreeDmEmbeddedRenderMeshData>();
+}
 
 public sealed record ThreeDmMeshFace(int A, int B, int C, int? D = null);
 
