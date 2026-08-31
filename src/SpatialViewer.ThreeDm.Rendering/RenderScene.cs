@@ -48,6 +48,8 @@ public sealed record ThreeDmRenderMesh(
 
     public uint? ColorArgb { get; init; }
 
+    public int? SourceSubobjectIndex { get; init; }
+
     public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
 }
 
