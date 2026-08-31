@@ -12,6 +12,10 @@ public readonly record struct Transform3d(
     double M20, double M21, double M22, double M23,
     double M30, double M31, double M32, double M33);
 
+public sealed record ThreeDmEmbeddedRenderMeshData(
+    int? SourceSubobjectIndex,
+    ThreeDmMeshGeometryData Mesh);
+
 public sealed record ThreeDmBrepVertexData(
     int Index,
     Point3d Position,
@@ -59,7 +63,11 @@ public sealed record ThreeDmBrepGeometryData(
     IReadOnlyList<ThreeDmBrepFaceData> Faces,
     bool IsSolid,
     BoundingBox3d Bounds)
-    : ThreeDmGeometryData(ThreeDmGeometryKind.Brep, Bounds);
+    : ThreeDmGeometryData(ThreeDmGeometryKind.Brep, Bounds)
+{
+    public IReadOnlyList<ThreeDmEmbeddedRenderMeshData> RenderMeshes { get; init; } =
+        Array.Empty<ThreeDmEmbeddedRenderMeshData>();
+}
 
 public sealed record ThreeDmInstanceReferenceGeometryData(
     Guid InstanceDefinitionId,
