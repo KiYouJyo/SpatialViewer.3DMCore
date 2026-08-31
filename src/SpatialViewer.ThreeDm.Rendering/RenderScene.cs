@@ -19,7 +19,10 @@ public enum ThreeDmRenderCurveKind
 
 public sealed record ThreeDmRenderPointSet(
     Guid SourceObjectId,
-    IReadOnlyList<ThreeDmRenderVertex> Points);
+    IReadOnlyList<ThreeDmRenderVertex> Points)
+{
+    public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
+}
 
 public sealed record ThreeDmRenderCurve(
     Guid SourceObjectId,
@@ -27,7 +30,10 @@ public sealed record ThreeDmRenderCurve(
     IReadOnlyList<ThreeDmRenderVertex> Points,
     bool IsClosed,
     double TargetChordTolerance,
-    int? SourceSubobjectIndex = null);
+    int? SourceSubobjectIndex = null)
+{
+    public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
+}
 
 public sealed record ThreeDmRenderMesh(
     Guid SourceObjectId,
@@ -41,6 +47,8 @@ public sealed record ThreeDmRenderMesh(
     public Guid? MaterialId { get; init; }
 
     public uint? ColorArgb { get; init; }
+
+    public IReadOnlyList<Guid> InstancePath { get; init; } = Array.Empty<Guid>();
 }
 
 public sealed record ThreeDmRenderDiagnostic(
