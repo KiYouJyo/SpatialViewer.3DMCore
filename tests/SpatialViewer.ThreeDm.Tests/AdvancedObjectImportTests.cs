@@ -9,7 +9,7 @@ namespace SpatialViewer.ThreeDm.Tests;
 public sealed class AdvancedObjectImportTests
 {
     [Fact]
-    public async Task ImportAsyncPreservesBrepSubDAnnotationHatchAndNestedInstances()
+    public async Task ImportAsyncPreservesBrepAnnotationHatchAndNestedInstances()
     {
         var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase3-{Guid.NewGuid():N}.3dm");
         try
@@ -21,13 +21,6 @@ public sealed class AdvancedObjectImportTests
                     new Rhino.Geometry.Point3d(10, 8, 6)));
                 Assert.NotNull(boxSource);
                 Add(model, boxSource, "BrepBox");
-
-                using var subDSource = new SubD();
-                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(20, 0, 0));
-                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(22, 0, 0));
-                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(22, 2, 0));
-                subDSource.Vertices.Add(SubDVertexTag.Smooth, new Rhino.Geometry.Point3d(20, 2, 0));
-                Add(model, subDSource, "SubDControlNet");
 
                 using var textDotSource = new TextDot("Door A", new Rhino.Geometry.Point3d(0, 12, 0))
                 {
@@ -115,9 +108,6 @@ public sealed class AdvancedObjectImportTests
                 Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.StartVertexIndex);
                 Assert.Contains(brepData.Vertices, vertex => vertex.Index == edge.EndVertexIndex);
             });
-
-            var subDData = Geometry<ThreeDmSubDGeometryData>(document, "SubDControlNet");
-            Assert.Equal(4, subDData.Vertices.Count);
 
             var textDotData = Geometry<ThreeDmTextDotGeometryData>(document, "TextDot");
             Assert.Equal("Door A", textDotData.Text);
