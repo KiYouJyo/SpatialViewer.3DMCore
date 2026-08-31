@@ -222,7 +222,10 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmImporter
                 PhysicallyBased = physicallyBased is null
                     ? null
                     : new ThreeDmPhysicallyBasedMaterialInfo(
-                        ToArgb(physicallyBased.BaseColor),
+                        physicallyBased.BaseColor.R,
+                        physicallyBased.BaseColor.G,
+                        physicallyBased.BaseColor.B,
+                        physicallyBased.BaseColor.A,
                         physicallyBased.Metallic,
                         physicallyBased.Roughness,
                         physicallyBased.Alpha,
