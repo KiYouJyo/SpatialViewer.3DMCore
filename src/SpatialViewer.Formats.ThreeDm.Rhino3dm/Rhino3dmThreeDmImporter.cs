@@ -301,6 +301,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
                 attributes.ObjectId), diagnostics, secondaryDiagnostics);
         }
 
+        ValidateGeometryLimits(geometry, options.Limits.Geometry, options.IncludeRenderMeshes);
         var bounds = ConvertBounds(geometry.GetBoundingBox(true));
         ThreeDmGeometryData? semanticGeometry = null;
         try
@@ -331,6 +332,96 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
         {
             SourceObjectVisible = sourceVisible,
         };
+    }
+
+    private static void ValidateGeometryLimits(
+        GeometryBase geometry,
+        ThreeDmGeometryLimits limits,
+        bool includeRenderMeshes)
+    {
+        switch (geometry)
+        {
+            case PointCloud pointCloud:
+                EnsureAtMost("PointCloud point count", pointCloud.Count, limits.MaxPointCloudPoints);
+                break;
+            case Mesh mesh:
+                ValidateMeshLimits(mesh, limits, "Mesh");
+                break;
+            case Brep brep:
+                var topologyCount = (long)brep.Vertices.Count + brep.Edges.Count + brep.Trims.Count + brep.Loops.Count + brep.Faces.Count;
+                EnsureAtMost("Brep topology item count", topologyCount, limits.MaxBrepTopologyItems);
+                if (includeRenderMeshes)
+                {
+                    foreach (var face in brep.Faces)
+                    {
+                        var renderMesh = face.GetMesh(MeshType.Render);
+                        if (renderMesh is not null)
+                        {
+                            ValidateMeshLimits(renderMesh, limits, "Brep render mesh");
+                        }
+                    }
+                }
+
+                break;
+            case SubD subD:
+                EnsureAtMost("SubD vertex count", subD.Vertices.Count, limits.MaxSubDVertices);
+                EnsureAtMost("SubD face count", subD.Faces.Count, limits.MaxSubDFaces);
+                break;
+            case Extrusion extrusion when includeRenderMeshes:
+                var extrusionMesh = extrusion.GetMesh(MeshType.Render);
+                if (extrusionMesh is not null)
+                {
+                    ValidateMeshLimits(extrusionMesh, limits, "Extrusion render mesh");
+                }
+
+                break;
+            case Curve curve:
+                ValidateCurveLimits(curve, limits);
+                break;
+            case Surface surface:
+                ValidateSurfaceLimits(surface, limits);
+                break;
+        }
+    }
+
+    private static void ValidateCurveLimits(Curve curve, ThreeDmGeometryLimits limits)
+    {
+        if (curve.TryGetPolyline(out var polyline))
+        {
+            EnsureAtMost("Polyline point count", polyline.Count, limits.MaxPolylinePoints);
+        }
+
+        using var nurbs = curve.ToNurbsCurve();
+        if (nurbs is not null)
+        {
+            EnsureAtMost("NURBS curve control-point count", nurbs.Points.Count, limits.MaxNurbsControlPoints);
+        }
+    }
+
+    private static void ValidateSurfaceLimits(Surface surface, ThreeDmGeometryLimits limits)
+    {
+        using var nurbs = surface.ToNurbsSurface();
+        if (nurbs is null)
+        {
+            return;
+        }
+
+        var count = (long)nurbs.Points.CountU * nurbs.Points.CountV;
+        EnsureAtMost("NURBS surface control-point count", count, limits.MaxNurbsControlPoints);
+    }
+
+    private static void ValidateMeshLimits(Mesh mesh, ThreeDmGeometryLimits limits, string label)
+    {
+        EnsureAtMost($"{label} vertex count", mesh.Vertices.Count, limits.MaxMeshVertices);
+        EnsureAtMost($"{label} face count", mesh.Faces.Count, limits.MaxMeshFaces);
+    }
+
+    private static void EnsureAtMost(string label, long actual, int limit)
+    {
+        if (actual > limit)
+        {
+            throw new InvalidDataException($"3DM {label} {actual} exceeds the configured limit of {limit}.");
+        }
     }
 
     private static DocumentHeader ReadHeader(string path, File3dm model) =>
