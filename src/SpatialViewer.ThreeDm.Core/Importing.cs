@@ -1,5 +1,61 @@
 namespace SpatialViewer.ThreeDm.Core;
 
+public sealed record ThreeDmGeometryLimits(
+    int MaxPointCloudPoints = 5_000_000,
+    int MaxMeshVertices = 10_000_000,
+    int MaxMeshFaces = 10_000_000,
+    int MaxBrepTopologyItems = 5_000_000,
+    int MaxSubDVertices = 5_000_000,
+    int MaxSubDFaces = 5_000_000,
+    int MaxNurbsControlPoints = 4_000_000,
+    int MaxPolylinePoints = 10_000_000)
+{
+    public static ThreeDmGeometryLimits Default { get; } = new();
+
+    public void Validate()
+    {
+        if (MaxPointCloudPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxPointCloudPoints));
+        }
+
+        if (MaxMeshVertices <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxMeshVertices));
+        }
+
+        if (MaxMeshFaces <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxMeshFaces));
+        }
+
+        if (MaxBrepTopologyItems <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxBrepTopologyItems));
+        }
+
+        if (MaxSubDVertices <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxSubDVertices));
+        }
+
+        if (MaxSubDFaces <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxSubDFaces));
+        }
+
+        if (MaxNurbsControlPoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxNurbsControlPoints));
+        }
+
+        if (MaxPolylinePoints <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxPolylinePoints));
+        }
+    }
+}
+
 public sealed record ThreeDmImportLimits(
     long MaxFileSizeBytes = 16L * 1024 * 1024 * 1024,
     int MaxObjectCount = 5_000_000,
@@ -8,6 +64,8 @@ public sealed record ThreeDmImportLimits(
     int MaxInstanceDefinitionCount = 1_000_000)
 {
     public static ThreeDmImportLimits Default { get; } = new();
+
+    public ThreeDmGeometryLimits Geometry { get; init; } = ThreeDmGeometryLimits.Default;
 
     public void Validate()
     {
@@ -35,6 +93,9 @@ public sealed record ThreeDmImportLimits(
         {
             throw new ArgumentOutOfRangeException(nameof(MaxInstanceDefinitionCount));
         }
+
+        ArgumentNullException.ThrowIfNull(Geometry);
+        Geometry.Validate();
     }
 }
 
