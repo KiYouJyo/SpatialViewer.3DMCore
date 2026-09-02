@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\SpatialViewer.ThreeDm.Core\SpatialViewer.ThreeDm.Core.csproj" />
+    <ProjectReference Include="..\SpatialViewer.Formats.ThreeDm.Rhino3dm\SpatialViewer.Formats.ThreeDm.Rhino3dm.csproj" />
+    <ProjectReference Include="..\SpatialViewer.ThreeDm.Rendering\SpatialViewer.ThreeDm.Rendering.csproj" />
+  </ItemGroup>
+</Project>
