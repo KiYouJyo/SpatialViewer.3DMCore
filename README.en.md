@@ -4,7 +4,7 @@
 
 Independent Rhino 3DM viewing core for SpatialViewer. This repository owns 3DM reader adapters, Rhino document semantics, 3D geometry/scene translation, rendering abstractions, and regression tests. The WinUI 3 product UI remains in `KiYouJyo/SpatialViewer`.
 
-> Current version: 0.6.0. Phase 5 Visual Fidelity is complete. The core now covers Rhino3dm ingestion, semantic geometry, Breps/instances/advanced objects, independent NURBS evaluation and adaptive derived geometry, layer/material/ByParent appearance resolution, PBR/texture metadata, and Shaded/Wireframe render-scene contracts. Phase 6 focuses next on background parsing, progressive scene availability, large-model memory/performance, and malformed-file defenses.
+> Current version: 0.7.0. Phase 6 Performance and Robustness is complete. The core now includes background import with cancellation/progress, progressive post-archive object batches, document/per-geometry safety ceilings, shared instance-mesh payloads, and large-coordinate Windows instanced upload alongside the existing semantic geometry, adaptive derived geometry, and visual-fidelity pipeline. Phase 7 focuses next on the stable SpatialViewer integration contract: open/close/cancel lifecycle, camera fit, layer overrides, selection IDs, and property inspection.
 
 ## Design principles
 
@@ -16,7 +16,7 @@ Independent Rhino 3DM viewing core for SpatialViewer. This repository owns 3DM r
 - **Regression driven**: object types, layers/materials/colors, instances, tessellation, and malformed files require fixtures and tests.
 - **Independent versioning**: the core and SpatialViewer UI are versioned separately.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+See [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ## License
 
