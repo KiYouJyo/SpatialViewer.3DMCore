@@ -145,10 +145,10 @@ public sealed class ImportPerformanceTests
         {
             using var model = new File3dm();
             var pointCloud = new PointCloud();
-            pointCloud.Add(0, 0, 0);
-            pointCloud.Add(1, 0, 0);
-            pointCloud.Add(2, 0, 0);
-            pointCloud.Add(3, 0, 0);
+            pointCloud.Add(new Rhino.Geometry.Point3d(0, 0, 0));
+            pointCloud.Add(new Rhino.Geometry.Point3d(1, 0, 0));
+            pointCloud.Add(new Rhino.Geometry.Point3d(2, 0, 0));
+            pointCloud.Add(new Rhino.Geometry.Point3d(3, 0, 0));
             Assert.NotEqual(Guid.Empty, model.Objects.AddPointCloud(pointCloud));
             Assert.True(model.Write(path, 8));
 
