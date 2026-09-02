@@ -6,7 +6,34 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 
 ### Planned
 - Add real-world architectural/product Rhino fixture coverage, including Rhino-produced SubD, Light and ClippingPlane samples.
-- Add large-model performance, progressive-loading and malformed-file baselines.
+
+## [0.7.0] - 2026-09-02
+
+### Added
+- Non-blocking application-level import around Rhino3dm's synchronous `File3dm.Read`, with caller-visible cancellation and deterministic import progress stages.
+- `IThreeDmProgressiveImporter` with header, bounded object-batch and completion updates after the archive read has completed.
+- Bounded-channel backpressure so progressive conversion cannot queue unbounded scene batches when the consumer is slower than the producer.
+- Configurable document-level safety ceilings for file size, object count, layers, materials and instance definitions.
+- Configurable per-geometry safety ceilings for PointCloud points, Mesh vertices/faces, Brep topology, SubD vertices/faces, NURBS control points, Polyline points and embedded render meshes.
+- `ThreeDmSharedMeshSceneBuilder`, preserving one local mesh payload per source/subobject while representing repeated block occurrences as transform + identity + appearance instances.
+- Shared-mesh appearance inheritance across nested instances without deduplicating picking identity or `InstancePath` metadata.
+- `WindowsThreeDmSharedUploadProjection`, converting shared geometry to float once with per-geometry local origins and rebased per-instance 4×4 transforms for large-coordinate stability.
+- `ThreeDmSharedMeshSceneStatistics` for deterministic unique-versus-expanded vertex/index accounting.
+- Dedicated performance and robustness documentation in `docs/PERFORMANCE.md`.
+
+### Tests
+- Added progress-stage, cancellation, pre-read file-size and post-read object-count regression coverage.
+- Added progressive-import equivalence tests and deterministic 8 / 128 / 1024-object bounded-batch baselines.
+- Added pathological single-geometry regressions for PointCloud and Mesh safety ceilings.
+- Added repeated-block tests proving two occurrences reuse one geometry payload while retaining independent transforms, instance paths and inherited colors.
+- Added a 100-instance structural baseline proving one triangle remains 3 unique vertices / 3 unique indices instead of 300 / 300 expanded entries.
+- Added Windows shared-upload coverage for geometry reuse plus local/scene origin rebasing.
+
+### Notes
+- Rhino3dm 8.32 exposes synchronous archive reading. `0.7.0` moves that work away from the caller thread, but does not claim that the native `File3dm.Read` itself can be interrupted or that `.3dm` archive decoding is streamed object-by-object.
+- Progressive availability starts after the archive has been read and validated; document tables arrive first, then bounded source-independent object batches.
+- The existing world-expanded `ThreeDmRenderSceneBuilder.Build()` path remains compatible. Shared mesh buffers are an opt-in rendering path for block-heavy models.
+- CI uses deterministic structural/batching baselines rather than hard hosted-runner millisecond gates. Wall-clock and peak-memory measurements belong to a stable local real-world Rhino corpus.
 
 ## [0.6.0] - 2026-08-31
 

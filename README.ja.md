@@ -4,7 +4,7 @@
 
 SpatialViewer 向けの独立した Rhino 3DM ビューアー内核です。本リポジトリでは 3DM 読み込みアダプター、Rhino ドキュメント意味モデル、3D ジオメトリ／シーン変換、レンダリング抽象、回帰テストを管理します。WinUI 3 の製品 UI は `KiYouJyo/SpatialViewer` に残します。
 
-> 現在のバージョンは 0.6.0 で、Phase 5 Visual Fidelity まで完了しています。Rhino3dm 読み込み、意味ジオメトリ、Brep／インスタンス／高度オブジェクト、独立 NURBS 評価と適応的な派生ジオメトリ、レイヤー／マテリアル／ByParent 外観解決、PBR／テクスチャメタデータ、Shaded／Wireframe のレンダーシーン契約を実装済みです。次の Phase 6 ではバックグラウンド解析、段階的シーン提供、大規模モデルのメモリ／性能、異常ファイル防御を進めます。
+> 現在のバージョンは 0.7.0 で、Phase 6 Performance and Robustness まで完了しています。バックグラウンド読み込みとキャンセル／進捗、アーカイブ読み込み後の段階的オブジェクトバッチ、ドキュメント／単一ジオメトリの安全上限、共有インスタンス Mesh、巨大座標対応の Windows instanced upload を実装し、従来の意味ジオメトリ、適応的派生ジオメトリ、Visual Fidelity も維持します。次の Phase 7 では SpatialViewer 統合契約を固定し、open/close/cancel ライフサイクル、camera fit、レイヤー上書き、selection ID、プロパティ参照を整備します。
 
 ## 設計原則
 
@@ -16,7 +16,7 @@ SpatialViewer 向けの独立した Rhino 3DM ビューアー内核です。本�
 - **回帰可能**：主要オブジェクト、色／材質、インスタンス、テセレーション、異常ファイルを fixture とテストで固定します。
 - **独立バージョン**：内核と SpatialViewer UI は別々にバージョン管理します。
 
-詳細は [`docs/ROADMAP.md`](docs/ROADMAP.md) と [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) を参照してください。
+詳細は [`docs/ROADMAP.md`](docs/ROADMAP.md)、[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)、[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) を参照してください。
 
 ## ライセンス
 

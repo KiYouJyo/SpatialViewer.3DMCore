@@ -59,12 +59,11 @@ Implemented source-independent viewing semantics for:
 - TextDot and annotation text metadata, annotation planes/styles and leader 3D point chains.
 - Hatch pattern metadata plus outer/inner semantic boundary curves.
 - SubD control-net vertices/faces and per-face color data where exposed by Rhino3dm.
-- Light viewing metadata: style, enabled state, position, direction, color and supported intensity/spot properties.
-- ClippingPlane surface, viewport targets, participation lists and clipping-depth metadata.
+- Light viewing metadata and ClippingPlane viewing semantics supported by the pinned reader.
 
-**Regression coverage:** a generated Rhino 8 `.3dm` containing a solid Brep box, TextDot, text annotation, leader, hatch and a two-level nested instance-definition/reference graph is written, reopened through the public importer and asserted against the source-independent Phase 3 contracts. The Rhino3dm 8.32 writer cannot create every advanced component used by the reader: generic File3dm object insertion does not create Light components, and a synthetic vertex-only SubD is not a valid serializable SubD. Those readers remain implemented and compile-validated; real Rhino-produced SubD/Light/ClippingPlane fixtures should be added to the fixture corpus as they become available.
+**Regression coverage:** generated Rhino 8 `.3dm` fixtures cover a solid Brep box, TextDot, text annotation, leader, hatch and a two-level nested instance graph. Rhino3dm 8.32 cannot synthesize every advanced fixture required by the reader; real Rhino-produced SubD/Light/ClippingPlane samples remain fixture-corpus follow-up work.
 
-**Exit criteria:** topology and instance hierarchy required by the viewer are preserved without flattening to render meshes. Broader side-by-side validation against real architectural/product Rhino models continues in the visual-fidelity and robustness phases.
+**Exit criteria:** topology and instance hierarchy required by the viewer are preserved without flattening to render meshes.
 
 ## Phase 4 — Adaptive tessellation and render scene
 
@@ -73,23 +72,22 @@ Implemented source-independent viewing semantics for:
 Implemented:
 
 - Camera-relative, model-tolerance-relative and explicit absolute chord-tolerance policies.
-- Independent Draft / Normal / High quality presets and explicit curve/surface tessellation budgets.
-- Analytic Arc/Circle/Ellipse display tessellation using the retained source plane basis; source geometry remains analytic in Core.
-- Source-independent rational/non-rational NURBS curve evaluation and adaptive curve tessellation.
-- Source-independent tensor-product NURBS surface evaluation, preserving openNURBS superfluous U/V knot boundaries.
-- Knot-span-aware adaptive tessellation for standalone untrimmed NURBS surfaces, including indexed triangles, normalized parametric UVs and robust area-weighted normals.
-- Mesh quad triangulation while preserving source vertices, normals, UVs, material IDs, object colors and source-object identity.
-- Stored Rhino render-mesh reuse for trimmed Breps and Extrusions. Trimmed Brep faces are never incorrectly filled by tessellating the untrimmed underlying surface.
-- Exact Brep edge overlays and analytic extrusion wire fallbacks with structured diagnostics when no stored fill mesh exists.
-- Recursive nested InstanceDefinition / InstanceReference expansion with composed 4×4 transforms and retained instance paths.
-- Render-object caches keyed by source identity, quality, chord tolerance and tessellation budgets, with conservative tolerance bucketing for nearby camera zoom levels.
-- Double-precision neutral render data. Conversion to float happens only at the Windows upload boundary, after scene-origin rebasing for large-coordinate stability.
+- Independent Draft / Normal / High quality presets and curve/surface budgets.
+- Analytic Arc/Circle/Ellipse display tessellation using retained source plane bases.
+- Independent rational/non-rational NURBS curve and tensor-product surface evaluation.
+- Knot-span-aware adaptive standalone-surface tessellation with indexed triangles, parametric UVs and robust normals.
+- Mesh triangulation while preserving source vertices, normals, UVs, material IDs, colors and source identity.
+- Stored Rhino render-mesh reuse for trimmed Breps and Extrusions; trimmed Breps are never filled by ignoring trims.
+- Exact Brep edge overlays and analytic extrusion wire fallbacks when fill meshes are absent.
+- Recursive nested instance expansion with composed transforms and retained instance paths.
+- Tessellation caches with conservative camera-relative tolerance buckets.
+- Double-precision neutral render data and Windows origin rebasing before float upload.
 
-**Regression coverage:** generated tests cover analytic curves, independent NURBS evaluation, rotated analytic planes, mesh triangulation, nested instances, render-mesh fallbacks, adaptive curved surface refinement, cache buckets and large-coordinate upload. A generated Rhino 8 `.3dm` containing a rational NURBS sphere is written, reopened through the public importer and rendered through the neutral surface evaluator/tessellator; generated vertices are checked against the source sphere and normals are validated for unit length/alignment.
+**Regression coverage:** analytic curves, independent NURBS evaluation, rotated planes, mesh triangulation, nested instances, render-mesh fallbacks, adaptive curved surfaces, cache buckets, large coordinates and a generated rational NURBS sphere round trip.
 
-**Boundaries:** normalized surface UVs are parametric coordinates, not final material texture mapping; texture/material fidelity belongs to Phase 5. Smooth SubD limit-surface generation remains a future compatible display-mesh path. Phase 4 deliberately keeps the preserved SubD control net instead of introducing a non-Rhino-compatible limit evaluator.
+**Boundaries:** normalized surface UVs are parametric coordinates, not final material texture mapping. Smooth SubD limit-surface generation remains a future compatible display-mesh path.
 
-**Exit criteria:** source curves and NURBS remain semantic geometry, display tessellation scales with requested visual tolerance, trimmed Breps do not lose trims, repeated nearby zoom levels can reuse conservative cached geometry, and large coordinates remain double precision until origin-rebased GPU upload.
+**Exit criteria:** source geometry remains semantic, tessellation scales with requested visual tolerance, trimmed Breps keep trims, nearby zoom levels reuse geometry, and large coordinates stay double precision until rebased upload.
 
 ## Phase 5 — Visual fidelity
 
@@ -97,31 +95,47 @@ Implemented:
 
 Implemented:
 
-- Source-independent color-source resolution for ByLayer, ByObject, ByMaterial and ByParent semantics.
-- Material-source resolution for object, layer and parent inheritance, including layer render-material references.
+- ByLayer, ByObject, ByMaterial and nested ByParent color resolution.
+- Object/layer/parent material-source resolution including layer render materials.
 - Parent/child layer visibility inheritance with cycle protection.
-- Separate source-object visibility and effective display visibility so layer overrides can reveal already-imported geometry without mutating source semantics.
-- Legacy material display properties: diffuse/transparency, specular/emission, shine and reflectivity.
-- PBR metadata only when Rhino marks the material as physically based, preserving floating-point base RGBA plus metallic, roughness, alpha, opacity, clearcoat, clearcoat roughness and BRDF.
-- Material texture-slot metadata including filename, type, enabled state, mapping channel, projection/wrap, repeat/offset and rotation.
-- Backend-neutral appearance attached to mesh, curve and point render primitives after geometry-cache generation.
-- `Shaded`, `ShadedWithEdges` and `Wireframe` display policies. Semantic Brep/Extrusion/SubD wires are preferred when available; generic mesh/surface wireframe falls back to deduplicated triangle edges.
-- Windows upload contracts for resolved appearance, legacy material parameters, PBR parameters and texture metadata.
-- A dedicated visual render-scene builder that reuses Phase 4 geometry/tessellation caches while resolving current layer/material/instance appearance afterward.
+- Separate source-object and effective display visibility for later layer overrides.
+- Legacy material properties plus floating-point Rhino PBR metadata.
+- Texture-slot filename/type/channel/projection/wrap/repeat/offset/rotation metadata.
+- Backend-neutral appearance attached after geometry-cache generation.
+- `Shaded`, `ShadedWithEdges` and `Wireframe` policies.
+- Windows appearance/PBR/texture upload contracts.
+- A visual scene builder that can change display properties without rebuilding source geometry.
 
-**Regression coverage:** generated Core/Rendering tests cover ByLayer, ColorFromMaterial, nested ByParent appearance, ancestor-layer hiding, display modes, Windows appearance/PBR/texture upload and post-import layer re-enable behavior. Real Rhino 8 `.3dm` round-trip tests cover layer render materials, legacy material parameters, physically based material conversion/parameters and texture filename metadata.
+**Regression coverage:** ByLayer/ByMaterial/ByParent, ancestor-layer hiding, display modes, Windows appearance upload, post-import layer re-enable and generated Rhino 8 legacy/PBR/texture round trips.
 
-**Boundaries:** 0.6.0 preserves material and texture inputs but does not claim final Rhino texture-coordinate mapping, image loading, environment/ground-plane reproduction or Rhino Render/Cycles/RDK shader parity. PBR base color stays floating point through neutral contracts rather than being quantized to 8-bit display color. Smooth SubD limit-surface display remains dependent on a future compatible Rhino display-mesh path.
+**Boundaries:** material and texture inputs are preserved but 0.6.0 does not claim final Rhino texture mapping, image loading, environment/ground-plane reproduction or Rhino Render/Cycles/RDK parity.
 
-**Exit criteria:** the viewer can resolve source display colors/materials across layers and nested instances, respect hierarchical visibility, switch useful architectural shaded/wire modes without rebuilding source geometry, and hand resolved legacy/PBR/texture inputs to a Windows renderer without reinterpreting Rhino document tables in the UI layer.
+**Exit criteria:** the viewer resolves Rhino display appearance across layers and nested instances, respects hierarchical visibility, switches architectural display modes without rebuilding geometry, and hands resolved material inputs to the Windows backend.
 
 ## Phase 6 — Performance and robustness
 
-- Background parse with cancellation.
-- Progressive scene availability for large files.
-- Instance deduplication and shared mesh buffers.
-- Defensive limits for malformed files and pathological geometry.
-- Memory/performance baselines at small, medium, and large fixture sizes.
+**Status: completed in 0.7.0**
+
+Implemented:
+
+- Application-level background import around Rhino3dm's synchronous `File3dm.Read`, keeping the caller responsive while preserving the reader's real synchronous boundary.
+- Deterministic import progress plus caller-visible cancellation. Cancellation during native archive read releases the caller; the worker stops semantic work as soon as Rhino3dm returns.
+- `IThreeDmProgressiveImporter`: document-table header first, then bounded source-independent object batches, then final completion metadata.
+- Bounded-channel backpressure so a slow renderer/UI cannot cause an unbounded queue of converted batches.
+- Configurable file/object/layer/material/instance-definition safety ceilings.
+- Configurable per-geometry ceilings for PointCloud, Mesh, Brep topology, SubD, NURBS/Polyline data and embedded Brep/Extrusion render meshes, checked before equivalent neutral-array allocation where the source API exposes counts.
+- `ThreeDmSharedMeshSceneBuilder`: one local geometry payload per source object/subobject plus per-occurrence transform, source identity, subobject identity, `InstancePath` and resolved appearance.
+- Compatibility preservation: the existing world-expanded `ThreeDmRenderSceneBuilder.Build()` behavior remains available; shared geometry is an opt-in path.
+- `WindowsThreeDmSharedUploadProjection` with per-geometry local-origin rebasing and scene-origin-rebased instance matrices, so shared float buffers remain stable for large-coordinate models.
+- `ThreeDmSharedMeshSceneStatistics` for deterministic unique-versus-expanded vertex/index accounting.
+
+**Regression coverage:** progress/cancellation/resource-limit tests; progressive full-import equivalence; 8 / 128 / 1024-object bounded-batch baselines; pathological PointCloud/Mesh limits; repeated-block geometry sharing with independent transforms/ByParent appearance; 100-instance structural reuse; and Windows shared-buffer origin rebasing.
+
+**Performance policy:** CI intentionally uses deterministic structural and batching baselines rather than hosted-runner millisecond thresholds. Stable-machine wall-clock, allocation and peak-working-set observations should use a maintained real-world Rhino corpus. See [`PERFORMANCE.md`](PERFORMANCE.md).
+
+**Boundaries:** progressive availability begins after the synchronous Rhino archive read has completed; Phase 6 does not claim object-by-object archive decoding. Shared buffers currently target mesh payloads and do not remove per-instance selection/appearance metadata.
+
+**Exit criteria:** file opening can leave the caller thread responsive, cancellation and progress are observable, converted objects can become available in bounded batches, pathological inputs have configurable guardrails, repeated block meshes can share payloads without losing identity, and large-coordinate instanced upload does not require per-instance vertex duplication.
 
 ## Phase 7 — SpatialViewer integration contract
 
