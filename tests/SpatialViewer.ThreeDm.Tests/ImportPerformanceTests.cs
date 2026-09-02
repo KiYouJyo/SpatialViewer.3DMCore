@@ -1,4 +1,5 @@
 using Rhino.FileIO;
+using Rhino.Geometry;
 using SpatialViewer.Formats.ThreeDm.Rhino3dm;
 using SpatialViewer.ThreeDm.Core;
 
@@ -129,6 +130,76 @@ public sealed class ImportPerformanceTests
                 await importer.ImportAsync(path, options));
 
             Assert.Contains("object count", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsyncRejectsPointCloudAboveConfiguredPointLimit()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase6-pointcloud-limit-{Guid.NewGuid():N}.3dm");
+        try
+        {
+            using var model = new File3dm();
+            var pointCloud = new PointCloud();
+            pointCloud.Add(0, 0, 0);
+            pointCloud.Add(1, 0, 0);
+            pointCloud.Add(2, 0, 0);
+            pointCloud.Add(3, 0, 0);
+            Assert.NotEqual(Guid.Empty, model.Objects.AddPointCloud(pointCloud));
+            Assert.True(model.Write(path, 8));
+
+            var options = new ThreeDmImportOptions
+            {
+                Limits = ThreeDmImportLimits.Default with
+                {
+                    Geometry = ThreeDmGeometryLimits.Default with { MaxPointCloudPoints = 3 },
+                },
+            };
+            var importer = new Rhino3dmThreeDmImporter();
+
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+                await importer.ImportAsync(path, options));
+
+            Assert.Contains("PointCloud point count", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsyncRejectsMeshAboveConfiguredVertexLimit()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-phase6-mesh-limit-{Guid.NewGuid():N}.3dm");
+        try
+        {
+            using var model = new File3dm();
+            var mesh = new Mesh();
+            mesh.Vertices.Add(0, 0, 0);
+            mesh.Vertices.Add(1, 0, 0);
+            mesh.Vertices.Add(0, 1, 0);
+            mesh.Faces.AddFace(0, 1, 2);
+            Assert.NotEqual(Guid.Empty, model.Objects.AddMesh(mesh));
+            Assert.True(model.Write(path, 8));
+
+            var options = new ThreeDmImportOptions
+            {
+                Limits = ThreeDmImportLimits.Default with
+                {
+                    Geometry = ThreeDmGeometryLimits.Default with { MaxMeshVertices = 2 },
+                },
+            };
+            var importer = new Rhino3dmThreeDmImporter();
+
+            var exception = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+                await importer.ImportAsync(path, options));
+
+            Assert.Contains("Mesh vertex count", exception.Message, StringComparison.Ordinal);
         }
         finally
         {
