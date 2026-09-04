@@ -59,6 +59,8 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
         options ??= new ThreeDmImportOptions();
         ValidateImportRequest(path, options, cancellationToken);
 
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var producerToken = lifetime.Token;
         var channel = Channel.CreateBounded<ThreeDmProgressiveImportUpdate>(new BoundedChannelOptions(4)
         {
             SingleReader = true,
@@ -66,15 +68,21 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
             FullMode = BoundedChannelFullMode.Wait,
         });
         var producer = Task.Run(
-            () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, cancellationToken),
+            () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, producerToken),
             CancellationToken.None);
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            yield return update;
+            await foreach (var update in channel.Reader.ReadAllAsync(producerToken).ConfigureAwait(false))
+            {
+                yield return update;
+            }
         }
-
-        await producer.ConfigureAwait(false);
+        finally
+        {
+            lifetime.Cancel();
+            await producer.ConfigureAwait(false);
+        }
     }
 
     private static ThreeDmSceneDocument ImportCore(
