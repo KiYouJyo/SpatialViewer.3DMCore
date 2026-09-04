@@ -61,4 +61,61 @@ public sealed class SemanticOverlayCatalogTests
         Assert.Equal(30, overlay.Transform.M23, 8);
         Assert.IsType<ThreeDmAnnotationGeometryData>(overlay.Geometry);
     }
+    [Fact]
+    public async Task SessionLayerOverrideCanRevealSourceVisibleSemanticOverlay()
+    {
+        var layerId = Guid.NewGuid();
+        var objectId = Guid.NewGuid();
+        var bounds = BoundingBox3d.FromPoints(new Point3d(0, 0, 0), new Point3d(1, 1, 0));
+        var annotation = new ThreeDmSceneObject(
+            objectId,
+            "Hidden by layer",
+            layerId,
+            ThreeDmGeometryKind.Annotation,
+            bounds,
+            IsVisible: false,
+            Geometry: new ThreeDmAnnotationGeometryData(
+                "Text",
+                "Reveal me",
+                "",
+                Guid.Empty,
+                new Plane3d(
+                    new Point3d(0, 0, 0),
+                    new Vector3d(1, 0, 0),
+                    new Vector3d(0, 1, 0),
+                    new Vector3d(0, 0, 1)),
+                1,
+                0,
+                Array.Empty<Point3d>(),
+                bounds))
+        {
+            SourceObjectVisible = true,
+        };
+        var document = new ThreeDmSceneDocument(
+            "overlay-layers.3dm",
+            [annotation],
+            bounds,
+            Array.Empty<ThreeDmImportDiagnostic>())
+        {
+            Layers = [new ThreeDmLayerInfo(layerId, "Annotations", null, false, false, 0xFFFFFFFF, 0)],
+        };
+
+        await using var session = new ThreeDmSession(new ImmediateImporter(document));
+        await session.OpenAsync("overlay-layers.3dm");
+
+        Assert.Empty(session.GetSemanticOverlays());
+        session.SetLayerVisibility(layerId, true);
+        Assert.Single(session.GetSemanticOverlays());
+    }
+
+    private sealed class ImmediateImporter(ThreeDmSceneDocument document) : IThreeDmImporter
+    {
+        public bool CanImport(string path) => true;
+
+        public ValueTask<ThreeDmSceneDocument> ImportAsync(
+            string path,
+            ThreeDmImportOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(document);
+    }
 }
