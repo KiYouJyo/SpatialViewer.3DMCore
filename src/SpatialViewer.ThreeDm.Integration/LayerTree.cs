@@ -56,12 +56,48 @@ public static class ThreeDmLayerTreeBuilder
 
         var layersById = document.Layers.ToDictionary(item => item.Id);
         var childIds = document.Layers
-            .GroupBy(item => item.ParentLayerId)
+            .Where(item => item.ParentLayerId is Guid)
+            .GroupBy(item => item.ParentLayerId!.Value)
             .ToDictionary(group => group.Key, group => group.Select(item => item.Id).ToArray());
-        var roots = document.Layers
-            .Where(layer => layer.ParentLayerId is not Guid parentId || !layersById.ContainsKey(parentId))
-            .Select(layer => BuildNode(layer, layersById, childIds, overrides, new HashSet<Guid>()))
-            .ToArray();
+        var emitted = new HashSet<Guid>();
+        var roots = new List<ThreeDmLayerNode>();
+
+        foreach (var layer in document.Layers.Where(layer =>
+                     layer.ParentLayerId is not Guid parentId ||
+                     parentId == layer.Id ||
+                     !layersById.ContainsKey(parentId)))
+        {
+            if (emitted.Contains(layer.Id))
+            {
+                continue;
+            }
+
+            roots.Add(BuildNode(
+                layer,
+                layersById,
+                childIds,
+                overrides,
+                new HashSet<Guid>(),
+                emitted));
+        }
+
+        // Malformed files can contain a pure parent cycle, leaving no natural root.
+        // Keep those layers inspectable instead of silently dropping the cycle.
+        foreach (var layer in document.Layers)
+        {
+            if (emitted.Contains(layer.Id))
+            {
+                continue;
+            }
+
+            roots.Add(BuildNode(
+                layer,
+                layersById,
+                childIds,
+                overrides,
+                new HashSet<Guid>(),
+                emitted));
+        }
 
         return roots;
     }
@@ -95,21 +131,27 @@ public static class ThreeDmLayerTreeBuilder
     private static ThreeDmLayerNode BuildNode(
         ThreeDmLayerInfo layer,
         IReadOnlyDictionary<Guid, ThreeDmLayerInfo> layersById,
-        IReadOnlyDictionary<Guid?, Guid[]> childIds,
+        IReadOnlyDictionary<Guid, Guid[]> childIds,
         ThreeDmLayerVisibilityOverrides overrides,
-        HashSet<Guid> path)
+        HashSet<Guid> path,
+        HashSet<Guid> emitted)
     {
-        if (!path.Add(layer.Id))
-        {
-            return CreateLeaf(layer, false, overrides.Get(layer.Id));
-        }
+        path.Add(layer.Id);
+        emitted.Add(layer.Id);
 
         var children = childIds.TryGetValue(layer.Id, out var ids)
             ? ids
-                .Where(layersById.ContainsKey)
-                .Select(id => BuildNode(layersById[id], layersById, childIds, overrides, new HashSet<Guid>(path)))
+                .Where(id => layersById.ContainsKey(id) && !path.Contains(id) && !emitted.Contains(id))
+                .Select(id => BuildNode(
+                    layersById[id],
+                    layersById,
+                    childIds,
+                    overrides,
+                    new HashSet<Guid>(path),
+                    emitted))
                 .ToArray()
             : Array.Empty<ThreeDmLayerNode>();
+
         return new ThreeDmLayerNode(
             layer.Id,
             layer.Name,
@@ -121,21 +163,6 @@ public static class ThreeDmLayerTreeBuilder
             layer.ColorArgb,
             children);
     }
-
-    private static ThreeDmLayerNode CreateLeaf(
-        ThreeDmLayerInfo layer,
-        bool effectiveVisible,
-        bool? visibilityOverride) =>
-        new(
-            layer.Id,
-            layer.Name,
-            layer.ParentLayerId,
-            layer.IsVisible,
-            visibilityOverride,
-            effectiveVisible,
-            layer.IsLocked,
-            layer.ColorArgb,
-            Array.Empty<ThreeDmLayerNode>());
 
     private static bool IsEffectivelyVisible(
         Guid layerId,

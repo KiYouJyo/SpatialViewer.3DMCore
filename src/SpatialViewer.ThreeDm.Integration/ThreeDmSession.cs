@@ -1,4 +1,3 @@
-using SpatialViewer.Formats.ThreeDm.Rhino3dm;
 using SpatialViewer.ThreeDm.Core;
 using SpatialViewer.ThreeDm.Rendering;
 
@@ -25,17 +24,27 @@ public sealed class ThreeDmSession : IAsyncDisposable
     private ThreeDmSceneDocument? _document;
     private Exception? _lastError;
     private ThreeDmSessionState _state = ThreeDmSessionState.Closed;
-
-    public ThreeDmSession()
-        : this(new Rhino3dmThreeDmImporter())
-    {
-    }
+    private string? _sourcePath;
 
     public ThreeDmSession(IThreeDmImporter importer)
     {
         ArgumentNullException.ThrowIfNull(importer);
         _importer = importer;
     }
+
+    public string? SourcePath
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _sourcePath;
+            }
+        }
+    }
+
+    public bool CanOpen(string path) =>
+        !string.IsNullOrWhiteSpace(path) && _importer.CanImport(path);
 
     public ThreeDmSessionState State
     {
@@ -98,6 +107,12 @@ public sealed class ThreeDmSession : IAsyncDisposable
         IProgress<ThreeDmImportProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!_importer.CanImport(path))
+        {
+            throw new NotSupportedException($"The configured 3DM importer cannot open '{path}'.");
+        }
+
         Task<ThreeDmSceneDocument> operation;
         CancellationTokenSource lifetime;
         lock (_sync)
@@ -109,6 +124,7 @@ public sealed class ThreeDmSession : IAsyncDisposable
 
             _document = null;
             _lastError = null;
+            _sourcePath = path;
             _layerOverrides.Clear();
             _visualBuilder.ClearCache();
             _sharedBuilder.ClearCache();
@@ -144,6 +160,7 @@ public sealed class ThreeDmSession : IAsyncDisposable
                 if (ReferenceEquals(_openOperation, operation) && _state != ThreeDmSessionState.Closing)
                 {
                     _document = null;
+                    _sourcePath = null;
                     _openOperation = null;
                     _openCancellation?.Dispose();
                     _openCancellation = null;
@@ -229,6 +246,7 @@ public sealed class ThreeDmSession : IAsyncDisposable
             _openOperation = null;
             _document = null;
             _lastError = null;
+            _sourcePath = null;
             _layerOverrides.Clear();
             _visualBuilder.ClearCache();
             _sharedBuilder.ClearCache();
