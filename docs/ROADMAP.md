@@ -139,11 +139,21 @@ Implemented:
 
 ## Phase 7 — SpatialViewer integration contract
 
-- Stable package/version boundary.
-- Open/close/cancel lifecycle.
-- Camera fit and model bounds.
-- Layer tree, visibility overrides, selection IDs and property inspection.
-- No direct UI dependency in this repository.
+**Status: completed in 0.8.0**
+
+Implemented:
+
+- Dedicated UI-independent `SpatialViewer.ThreeDm.Integration` assembly as the product-facing host boundary.
+- Stable `SpatialViewer.ThreeDmHost` API v1 compatibility window for future package/runtime validation.
+- Importer-injected open/close/cancel lifecycle without coupling the host facade to Rhino3dm.
+- Model-bounds access and deterministic camera-fit calculation with aspect/FOV/padding validation.
+- Hierarchical layer-tree projection with source visibility, runtime overrides, effective visibility and malformed-cycle protection.
+- Runtime visibility overrides that rebuild display state without re-importing source geometry.
+- Stable selection identities preserving source object, subobject and instance-path context.
+- Property inspection for source object, layer, material and instance-path metadata.
+- Integration regression tests covering lifecycle, cancellation, layer overrides, camera fit, selection resolution, unsupported-format routing and cyclic layer trees.
+
+**Exit criteria:** SpatialViewer can bind to one UI-independent host assembly for document lifecycle and viewer state, while reader adapters and concrete Windows GPU rendering remain replaceable implementation details.
 
 ## Fixture matrix
 
