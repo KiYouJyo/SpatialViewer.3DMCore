@@ -52,7 +52,7 @@ public sealed class ThreeDmPreparedRenderSceneBuilder
             diagnostics);
     }
 
-    private static IReadOnlyList<ThreeDmRenderCurve> RemoveFilledSemanticEdges(
+    private static ThreeDmRenderCurve[] RemoveFilledSemanticEdges(
         ThreeDmSceneDocument document,
         ThreeDmSharedMeshScene shared,
         IReadOnlyList<ThreeDmRenderCurve> curves)
