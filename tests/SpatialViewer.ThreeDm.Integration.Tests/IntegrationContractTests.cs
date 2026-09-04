@@ -69,7 +69,7 @@ public sealed class IntegrationContractTests
 
         session.SetLayerVisibility(child.Id, null);
         Assert.Single(session.BuildVisualScene().Meshes);
-        Assert.Equal(1, session.LayerVisibilityOverrides.Count);
+        Assert.Single(session.LayerVisibilityOverrides);
     }
 
     [Fact]
