@@ -12,7 +12,7 @@ public enum ThreeDmSessionState
     Faulted,
 }
 
-public sealed class ThreeDmSession : IAsyncDisposable
+public sealed partial class ThreeDmSession : IAsyncDisposable
 {
     private readonly object _sync = new();
     private readonly IThreeDmImporter _importer;

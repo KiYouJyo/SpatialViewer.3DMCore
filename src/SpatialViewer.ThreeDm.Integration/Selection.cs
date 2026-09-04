@@ -32,7 +32,14 @@ public sealed record ThreeDmSelectionProperties(
     bool SourceVisible,
     bool EffectiveVisible,
     IReadOnlyList<Guid> InstancePath,
-    IReadOnlyList<string> InstanceNames);
+    IReadOnlyList<string> InstanceNames)
+{
+    public uint? ObjectColorArgb { get; init; }
+    public string? ColorSource { get; init; }
+    public string? MaterialSource { get; init; }
+    public IReadOnlyDictionary<string, string> GeometryDetails { get; init; } =
+        new Dictionary<string, string>();
+}
 
 public static class ThreeDmSelectionCatalog
 {
@@ -129,7 +136,13 @@ public static class ThreeDmSelectionCatalog
             sceneObject.SourceObjectVisible ?? sceneObject.IsVisible,
             effectiveVisible,
             instancePath,
-            instanceNames);
+            instanceNames)
+        {
+            ObjectColorArgb = sceneObject.ObjectColorArgb,
+            ColorSource = sceneObject.ColorSource,
+            MaterialSource = sceneObject.MaterialSource,
+            GeometryDetails = ThreeDmInspection.CreateGeometryDetails(sceneObject.Geometry),
+        };
     }
 
     private static bool IsObjectEffectivelyVisible(
