@@ -39,6 +39,7 @@ public sealed partial class ThreeDmSession
             _layerOverrides.Clear();
             _visualBuilder.ClearCache();
             _sharedBuilder.ClearCache();
+            _preparedBuilder.ClearCache();
             _state = ThreeDmSessionState.Opening;
             lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _openCancellation = lifetime;

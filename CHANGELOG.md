@@ -6,6 +6,16 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 
 Future work must preserve the 1.x host contract unless a deliberate major-version break is required.
 
+## [1.0.1] - 2026-09-04
+
+### Fixed
+- Primitive-mask rendering now skips geometry classes that cannot contribute to the requested pass instead of tessellating them and discarding the output.
+- Brep/Extrusion mesh and wire generation now honor the requested primitive mask independently, avoiding duplicate mesh tessellation in ThreeDmPreparedRenderScene.
+- Progressive session opening now clears the prepared-render cache alongside the visual/shared caches.
+
+### Tests
+- Added regression coverage proving a curves/points-only pass does not tessellate or cache a pure mesh.
+
 ## [1.0.0] - 2026-09-04
 
 ### Added

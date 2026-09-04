@@ -137,6 +137,11 @@ public sealed class ThreeDmRenderSceneBuilder
             return;
         }
 
+        if (!CanProduceRequestedPrimitives(sceneObject.Geometry, primitiveMask))
+        {
+            return;
+        }
+
         var cacheTolerance = settings.ResolveCacheChordTolerance(sceneObject.Bounds, modelTolerance);
         var tessellationSettings = settings with { AbsoluteChordTolerance = cacheTolerance };
         var key = new TessellationCacheKey(
@@ -146,12 +151,15 @@ public sealed class ThreeDmRenderSceneBuilder
             cacheTolerance,
             settings.IncludeBrepEdges,
             settings.MaxCurveSegments,
-            settings.MaxSurfaceSegmentsPerDirection);
+            settings.MaxSurfaceSegmentsPerDirection,
+            primitiveMask);
 
         LocalRenderObject local;
         try
         {
-            local = _cache.GetOrAdd(key, _ => TessellateLocal(sceneObject, tessellationSettings, modelTolerance));
+            local = _cache.GetOrAdd(
+                key,
+                _ => TessellateLocal(sceneObject, tessellationSettings, modelTolerance, primitiveMask));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -192,7 +200,8 @@ public sealed class ThreeDmRenderSceneBuilder
     private static LocalRenderObject TessellateLocal(
         ThreeDmSceneObject sceneObject,
         ThreeDmTessellationSettings settings,
-        double modelTolerance)
+        double modelTolerance,
+        ThreeDmRenderPrimitiveMask primitiveMask)
     {
         var meshes = new List<ThreeDmRenderMesh>();
         var pointSets = new List<ThreeDmRenderPointSet>();
@@ -201,21 +210,25 @@ public sealed class ThreeDmRenderSceneBuilder
 
         switch (sceneObject.Geometry)
         {
-            case ThreeDmPointGeometryData point:
+            case ThreeDmPointGeometryData point
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.PointSets):
                 pointSets.Add(new ThreeDmRenderPointSet(sceneObject.Id, [ToRenderVertex(point.Position)]));
                 break;
 
-            case ThreeDmPointCloudGeometryData pointCloud:
+            case ThreeDmPointCloudGeometryData pointCloud
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.PointSets):
                 pointSets.Add(new ThreeDmRenderPointSet(
                     sceneObject.Id,
                     pointCloud.Points.Select(ToRenderVertex).ToArray()));
                 break;
 
-            case ThreeDmCurveGeometryData curve:
+            case ThreeDmCurveGeometryData curve
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves):
                 curves.Add(ThreeDmCurveTessellator.Tessellate(sceneObject.Id, curve, settings, modelTolerance));
                 break;
 
-            case ThreeDmMeshGeometryData mesh:
+            case ThreeDmMeshGeometryData mesh
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes):
                 meshes.Add(ThreeDmMeshTessellator.Tessellate(
                     sceneObject.Id,
                     mesh,
@@ -224,8 +237,9 @@ public sealed class ThreeDmRenderSceneBuilder
                 break;
 
             case ThreeDmBrepGeometryData brep:
-                var hasBrepRenderMeshes = AddEmbeddedRenderMeshes(sceneObject, brep.RenderMeshes, meshes);
-                if (settings.IncludeBrepEdges)
+                var hasBrepRenderMeshes = Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) &&
+                    AddEmbeddedRenderMeshes(sceneObject, brep.RenderMeshes, meshes);
+                if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves) && settings.IncludeBrepEdges)
                 {
                     foreach (var edge in brep.Edges)
                     {
@@ -238,7 +252,7 @@ public sealed class ThreeDmRenderSceneBuilder
                     }
                 }
 
-                if (!hasBrepRenderMeshes)
+                if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasBrepRenderMeshes)
                 {
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
@@ -248,9 +262,13 @@ public sealed class ThreeDmRenderSceneBuilder
                 break;
 
             case ThreeDmExtrusionGeometryData extrusion:
-                var hasExtrusionRenderMeshes = AddEmbeddedRenderMeshes(sceneObject, extrusion.RenderMeshes, meshes);
-                TessellateExtrusionWireframe(sceneObject.Id, extrusion, settings, modelTolerance, curves);
-                if (!hasExtrusionRenderMeshes)
+                var hasExtrusionRenderMeshes = Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) &&
+                    AddEmbeddedRenderMeshes(sceneObject, extrusion.RenderMeshes, meshes);
+                if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves))
+                {
+                    TessellateExtrusionWireframe(sceneObject.Id, extrusion, settings, modelTolerance, curves);
+                }
+                if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasExtrusionRenderMeshes)
                 {
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
@@ -259,7 +277,8 @@ public sealed class ThreeDmRenderSceneBuilder
                 }
                 break;
 
-            case ThreeDmHatchGeometryData hatch:
+            case ThreeDmHatchGeometryData hatch
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves):
                 var hatchIndex = 0;
                 foreach (var boundary in hatch.OuterBoundaries.Concat(hatch.InnerBoundaries))
                 {
@@ -272,7 +291,9 @@ public sealed class ThreeDmRenderSceneBuilder
                 }
                 break;
 
-            case ThreeDmAnnotationGeometryData annotation when annotation.LeaderPoints.Count > 1:
+            case ThreeDmAnnotationGeometryData annotation
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves) &&
+                     annotation.LeaderPoints.Count > 1:
                 curves.Add(new ThreeDmRenderCurve(
                     sceneObject.Id,
                     ThreeDmRenderCurveKind.Polyline,
@@ -281,7 +302,8 @@ public sealed class ThreeDmRenderSceneBuilder
                     settings.ResolveChordTolerance(annotation.Bounds, modelTolerance)));
                 break;
 
-            case ThreeDmSubDGeometryData subD:
+            case ThreeDmSubDGeometryData subD
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves):
                 TessellateSubDControlNet(sceneObject.Id, subD, settings, modelTolerance, curves);
                 diagnostics.Add(new ThreeDmRenderDiagnostic(
                     sceneObject.Id,
@@ -289,7 +311,8 @@ public sealed class ThreeDmRenderSceneBuilder
                     "SubD control-net wireframe is available; smooth limit-surface rendering requires a future compatible display-mesh path."));
                 break;
 
-            case ThreeDmNurbsSurfaceGeometryData surface:
+            case ThreeDmNurbsSurfaceGeometryData surface
+                when Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes):
                 meshes.Add(ThreeDmNurbsSurfaceTessellator.Tessellate(
                     sceneObject.Id,
                     surface,
@@ -302,6 +325,29 @@ public sealed class ThreeDmRenderSceneBuilder
 
         return new LocalRenderObject(meshes, pointSets, curves, diagnostics);
     }
+
+    private static bool CanProduceRequestedPrimitives(
+        ThreeDmGeometryData geometry,
+        ThreeDmRenderPrimitiveMask primitiveMask) =>
+        geometry switch
+        {
+            ThreeDmPointGeometryData or ThreeDmPointCloudGeometryData =>
+                Includes(primitiveMask, ThreeDmRenderPrimitiveMask.PointSets),
+            ThreeDmCurveGeometryData or ThreeDmHatchGeometryData or
+            ThreeDmAnnotationGeometryData or ThreeDmSubDGeometryData =>
+                Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves),
+            ThreeDmMeshGeometryData or ThreeDmNurbsSurfaceGeometryData =>
+                Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes),
+            ThreeDmBrepGeometryData or ThreeDmExtrusionGeometryData =>
+                Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) ||
+                Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Curves),
+            _ => false,
+        };
+
+    private static bool Includes(
+        ThreeDmRenderPrimitiveMask mask,
+        ThreeDmRenderPrimitiveMask requested) =>
+        (mask & requested) != 0;
 
     private static bool AddEmbeddedRenderMeshes(
         ThreeDmSceneObject sceneObject,
@@ -552,7 +598,8 @@ public sealed class ThreeDmRenderSceneBuilder
         double ChordTolerance,
         bool IncludeBrepEdges,
         int MaxCurveSegments,
-        int MaxSurfaceSegmentsPerDirection);
+        int MaxSurfaceSegmentsPerDirection,
+        ThreeDmRenderPrimitiveMask PrimitiveMask);
 
     private sealed record LocalRenderObject(
         IReadOnlyList<ThreeDmRenderMesh> Meshes,
