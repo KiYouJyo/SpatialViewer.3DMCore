@@ -111,7 +111,10 @@ public sealed record ThreeDmNamedViewInfo(
     Vector3d CameraDirection,
     Vector3d CameraUp,
     Point3d TargetPoint,
-    bool IsPerspectiveProjection);
+    bool IsPerspectiveProjection)
+{
+    public double Camera35mmLensLength { get; init; }
+}
 
 public sealed record ThreeDmSceneObject(
     Guid Id,

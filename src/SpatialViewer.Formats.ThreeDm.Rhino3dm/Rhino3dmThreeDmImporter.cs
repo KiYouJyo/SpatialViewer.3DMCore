@@ -606,7 +606,10 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
                 ConvertVector(viewport.CameraDirection),
                 ConvertVector(viewport.CameraUp),
                 ConvertPoint(viewport.TargetPoint),
-                viewport.IsPerspectiveProjection));
+                viewport.IsPerspectiveProjection)
+            {
+                Camera35mmLensLength = viewport.Camera35mmLensLength,
+            });
         }
 
         return result;

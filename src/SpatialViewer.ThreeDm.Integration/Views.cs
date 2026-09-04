@@ -30,10 +30,12 @@ public static class ThreeDmViewCatalog
 {
     public static IReadOnlyList<ThreeDmViewPreset> CreateNamedViews(
         ThreeDmSceneDocument document,
-        double verticalFieldOfViewRadians = Math.PI / 4)
+        double aspectRatio = 16.0 / 9.0,
+        double fallbackVerticalFieldOfViewRadians = Math.PI / 4)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ValidateFov(verticalFieldOfViewRadians);
+        ValidateAspectRatio(aspectRatio);
+        ValidateFov(fallbackVerticalFieldOfViewRadians);
         var radius = BoundingRadius(document.Bounds);
 
         return document.NamedViews.Select((view, index) =>
@@ -49,6 +51,10 @@ public static class ThreeDmViewCatalog
             }
 
             var (near, far) = ClipPlanes(distance, radius);
+            var verticalFov = ResolveVerticalFov(
+                view.Camera35mmLensLength,
+                aspectRatio,
+                fallbackVerticalFieldOfViewRadians);
             var camera = new ThreeDmCameraState(
                 location,
                 target,
@@ -57,7 +63,7 @@ public static class ThreeDmViewCatalog
                 near,
                 far)
             {
-                VerticalFieldOfViewRadians = verticalFieldOfViewRadians,
+                VerticalFieldOfViewRadians = verticalFov,
                 OrthographicHeight = Math.Max(radius * 2.2, 1e-6),
             };
 
@@ -167,6 +173,27 @@ public static class ThreeDmViewCatalog
     private static bool IsFinite(Point3d point) =>
         double.IsFinite(point.X) && double.IsFinite(point.Y) && double.IsFinite(point.Z);
 
+    private static double ResolveVerticalFov(double lensLength, double aspectRatio, double fallback)
+    {
+        if (!double.IsFinite(lensLength) || lensLength <= 0)
+        {
+            return fallback;
+        }
+
+        const double filmWidthMillimeters = 36.0;
+        var horizontal = 2 * Math.Atan(filmWidthMillimeters / (2 * lensLength));
+        var vertical = 2 * Math.Atan(Math.Tan(horizontal * 0.5) / aspectRatio);
+        return double.IsFinite(vertical) && vertical > 0 && vertical < Math.PI ? vertical : fallback;
+    }
+
+    private static void ValidateAspectRatio(double value)
+    {
+        if (!double.IsFinite(value) || value <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value));
+        }
+    }
+
     private static void ValidateFov(double value)
     {
         if (!double.IsFinite(value) || value <= 0 || value >= Math.PI)
@@ -178,8 +205,13 @@ public static class ThreeDmViewCatalog
 
 public sealed partial class ThreeDmSession
 {
-    public IReadOnlyList<ThreeDmViewPreset> GetNamedViewPresets(double verticalFieldOfViewRadians = Math.PI / 4) =>
-        ThreeDmViewCatalog.CreateNamedViews(RequireOpenDocument(), verticalFieldOfViewRadians);
+    public IReadOnlyList<ThreeDmViewPreset> GetNamedViewPresets(
+        double aspectRatio = 16.0 / 9.0,
+        double fallbackVerticalFieldOfViewRadians = Math.PI / 4) =>
+        ThreeDmViewCatalog.CreateNamedViews(
+            RequireOpenDocument(),
+            aspectRatio,
+            fallbackVerticalFieldOfViewRadians);
 
     public IReadOnlyList<ThreeDmViewPreset> GetStandardViewPresets(
         double aspectRatio = 16.0 / 9.0,
