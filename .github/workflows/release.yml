@@ -25,8 +25,11 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $zip = (Get-ChildItem artifacts/kernel/ThreeDmCore-*-x64.zip | Select-Object -First 1).FullName
+          ./tools/validate-kernel-package.ps1 -ArchivePath $zip
+          $hash = "$zip.sha256"
+          $manifest = (Resolve-Path "artifacts/kernel/threedmcore-release.json").Path
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title "SpatialViewer.3DMCore $tag" --generate-notes
           }
-          gh release upload $tag $zip --clobber
+          gh release upload $tag $zip $hash $manifest --clobber

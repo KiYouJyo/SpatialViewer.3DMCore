@@ -88,7 +88,13 @@ $manifest = [ordered]@{
 }
 
 $manifestPath = Join-Path $stage "threedmcore-release.json"
-$manifest | ConvertTo-Json -Depth 8 | Set-Content $manifestPath -Encoding utf8
+$manifestJson = $manifest | ConvertTo-Json -Depth 8
+$manifestJson | Set-Content $manifestPath -Encoding utf8
 
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -CompressionLevel Optimal
+$externalManifest = Join-Path $outputRoot "threedmcore-release.json"
+$manifestJson | Set-Content $externalManifest -Encoding utf8
+$zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+"$zipHash  $(Split-Path -Leaf $zip)" | Set-Content "$zip.sha256" -Encoding ascii
 Write-Host "Created $zip"
+Write-Host "SHA256 $zipHash"
