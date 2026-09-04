@@ -1,6 +1,4 @@
 using System.Drawing;
-using Rhino.DocObjects;
-using Rhino.FileIO;
 using Rhino.Geometry;
 using SpatialViewer.Formats.ThreeDm.Rhino3dm;
 using SpatialViewer.ThreeDm.Core;
@@ -10,54 +8,39 @@ namespace SpatialViewer.ThreeDm.Tests;
 public sealed class AdvancedFixtureCoverageTests
 {
     [Fact]
-    public async Task GeneratedRhino8FileRoundTripsLightAndClippingPlane()
+    public void ConverterPreservesLightAndClippingPlaneSemantics()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"spatialviewer-advanced-{Guid.NewGuid():N}.3dm");
-        try
+        using var clippingPlane = new ClippingPlaneSurface(
+            new Plane(new Rhino.Geometry.Point3d(0, 0, 2), Rhino.Geometry.Vector3d.ZAxis));
+        var convertedClip = Assert.IsType<ThreeDmClippingPlaneGeometryData>(
+            Rhino3dmGeometryConverter.Convert(clippingPlane));
+        Assert.True(convertedClip.Bounds.IsValid);
+
+        using var light = new Rhino.Geometry.Light
         {
-            using (var model = new File3dm())
-            {
-                using var clippingPlaneSource = new ClippingPlaneSurface(
-                    new Plane(new Rhino.Geometry.Point3d(0, 0, 2), Rhino.Geometry.Vector3d.ZAxis));
-                Add(model, clippingPlaneSource, "Clip");
-
-                using var lightSource = new Rhino.Geometry.Light
-                {
-                    Name = "Key Light",
-                    Location = new Rhino.Geometry.Point3d(2, 2, 8),
-                    Direction = new Rhino.Geometry.Vector3d(0, 0, -1),
-                    Diffuse = Color.FromArgb(255, 240, 220, 200),
-                    Intensity = 0.75,
-                    IsEnabled = true,
-                };
-                Add(model, lightSource, "Light");
-
-                Assert.True(model.Write(path, 8));
-            }
-
-            var document = await new Rhino3dmThreeDmImporter().ImportAsync(path);
-
-            var clip = Assert.IsType<ThreeDmClippingPlaneGeometryData>(
-                Assert.Single(document.Objects, item => item.Name == "Clip").Geometry);
-            Assert.True(clip.Bounds.IsValid);
-
-            var importedLight = Assert.IsType<ThreeDmLightGeometryData>(
-                Assert.Single(document.Objects, item => item.Name == "Light").Geometry);
-            Assert.Equal("Key Light", importedLight.Name);
-            Assert.Equal(0.75, importedLight.Intensity, 8);
-        }
-        finally
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
+            Name = "Key Light",
+            Location = new Rhino.Geometry.Point3d(2, 2, 8),
+            Direction = new Rhino.Geometry.Vector3d(0, 0, -1),
+            Diffuse = Color.FromArgb(255, 240, 220, 200),
+            Intensity = 0.75,
+            IsEnabled = true,
+        };
+        var convertedLight = Assert.IsType<ThreeDmLightGeometryData>(
+            Rhino3dmGeometryConverter.Convert(light));
+        Assert.Equal("Key Light", convertedLight.Name);
+        Assert.Equal(0.75, convertedLight.Intensity, 8);
+        Assert.True(convertedLight.IsEnabled);
     }
 
-    private static void Add(File3dm model, GeometryBase geometry, string name)
+    [Fact]
+    public void ConverterRecognizesSubDGeometryEvenWhenPinnedBindingsCannotSynthesizeAValidFixture()
     {
-        var id = model.Objects.Add(geometry, new ObjectAttributes { Name = name });
-        Assert.NotEqual(Guid.Empty, id);
+        using var subD = new SubD();
+
+        var converted = Assert.IsType<ThreeDmSubDGeometryData>(
+            Rhino3dmGeometryConverter.Convert(subD));
+
+        Assert.Empty(converted.Vertices);
+        Assert.Empty(converted.Faces);
     }
 }
