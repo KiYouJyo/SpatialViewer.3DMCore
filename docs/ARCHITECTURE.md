@@ -15,6 +15,7 @@
   -> visual fidelity resolution (layer/material/instance/display mode)
   -> expanded render scene OR shared geometry + instance transforms
   -> optional Windows origin-rebased upload projection
+  -> SpatialViewer.ThreeDm.Integration host contract
   -> SpatialViewer UI / concrete renderer
 ```
 
@@ -25,7 +26,8 @@
 - `SpatialViewer.Formats.ThreeDm.Rhino3dm` depends on the format model + official Rhino3dm package.
 - `SpatialViewer.ThreeDm.Rendering` depends only on ThreeDm.Core.
 - `SpatialViewer.ThreeDm.Rendering.Windows` depends on the rendering abstraction; a concrete GPU API is intentionally deferred.
-- `SpatialViewer` may depend on 3DMCore; 3DMCore must never reference SpatialViewer App/Presentation assemblies.
+- `SpatialViewer.ThreeDm.Integration` depends on Core + Rendering only. It owns viewer lifecycle, camera fit, layer overrides, selection IDs and property inspection, and accepts `IThreeDmImporter` by injection instead of referencing Rhino3dm directly.
+- `SpatialViewer` may depend on the Integration contract and whichever reader/backend assemblies it chooses to compose; 3DMCore must never reference SpatialViewer App/Presentation assemblies.
 
 ## Naming rule
 
@@ -60,3 +62,10 @@ The compatibility render-scene path may expand instances into world-space primit
 The Windows shared upload path performs local-origin rebasing once per geometry and scene-origin rebasing through instance transforms. This keeps float buffers/matrices stable for large-coordinate models without duplicating vertex/index buffers per instance.
 
 Detailed execution and baseline policy is documented in [`PERFORMANCE.md`](PERFORMANCE.md).
+
+
+## Integration host rule
+
+`SpatialViewer.ThreeDm.Integration` is the stable product-facing boundary starting with 0.8.0. The contract name is `SpatialViewer.ThreeDmHost`, API version 1, with a 1.x compatibility window. The host layer must remain UI-independent and reader-independent: it may orchestrate `IThreeDmImporter`, semantic documents and render-scene builders, but it must not construct Rhino3dm adapters or WinUI controls internally.
+
+A `ThreeDmSession` owns one open-document lifecycle at a time. Closing or cancelling follows the importer cancellation contract, clears render caches and runtime layer overrides, and leaves no WinUI-owned resources inside the core repository. Layer overrides are projected onto a display document without mutating source document semantics, allowing the geometry cache to remain reusable.

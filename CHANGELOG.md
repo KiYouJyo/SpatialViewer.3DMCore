@@ -7,6 +7,28 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 ### Planned
 - Add real-world architectural/product Rhino fixture coverage, including Rhino-produced SubD, Light and ClippingPlane samples.
 
+## [0.8.0] - 2026-09-04
+
+### Added
+- New UI-independent `SpatialViewer.ThreeDm.Integration` assembly as the stable product-facing host boundary.
+- `SpatialViewer.ThreeDmHost` API v1 compatibility descriptor for future runtime/package validation.
+- Session-level open, cancel, close, fault recovery, model-bounds access and render-cache ownership.
+- Deterministic camera-fit contract with validated aspect ratio, vertical FOV, padding and orthogonalized up vector.
+- Hierarchical layer-tree projection with runtime visibility overrides and effective parent visibility.
+- Stable selection IDs preserving source object, subobject and instance-path context plus source property inspection.
+- Explicit importer injection so the integration facade stays independent from the Rhino3dm adapter.
+
+### Fixed
+- Layer-tree construction no longer uses nullable `Guid?` dictionary keys, resolving the Phase 7 Debug-build `CS8714` failure.
+- Malformed pure parent cycles remain inspectable as a bounded tree and resolve as effectively hidden instead of disappearing.
+
+### Tests
+- Added integration-contract tests for lifecycle, cancellation, layer overrides, camera fit, selection/property resolution, host compatibility, unsupported-format routing and cyclic layer graphs.
+
+### Notes
+- `0.8.0` completes Phase 7 and establishes the boundary consumed by the SpatialViewer product. Concrete WinUI 3 controls and the final Windows GPU renderer remain product/backend work, not responsibilities of the integration contract.
+- The Integration assembly depends only on Core + Rendering; the product is responsible for composing the Rhino3dm reader adapter.
+
 ## [0.7.0] - 2026-09-02
 
 ### Added
