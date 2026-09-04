@@ -71,17 +71,27 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
             () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, producerToken),
             CancellationToken.None);
 
+        var completedNaturally = false;
         try
         {
             await foreach (var update in channel.Reader.ReadAllAsync(producerToken).ConfigureAwait(false))
             {
                 yield return update;
             }
+
+            completedNaturally = true;
         }
         finally
         {
             lifetime.Cancel();
-            await producer.ConfigureAwait(false);
+            if (completedNaturally)
+            {
+                await producer.ConfigureAwait(false);
+            }
+            else
+            {
+                ObserveFault(producer);
+            }
         }
     }
 
