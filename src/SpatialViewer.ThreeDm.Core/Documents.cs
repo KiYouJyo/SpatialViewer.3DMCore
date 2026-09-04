@@ -105,6 +105,27 @@ public sealed record ThreeDmMaterialInfo(
         Array.Empty<ThreeDmMaterialTextureInfo>();
 }
 
+public sealed record ThreeDmViewFrustumInfo(
+    double Left,
+    double Right,
+    double Bottom,
+    double Top,
+    double Near,
+    double Far)
+{
+    public bool IsValid =>
+        double.IsFinite(Left) &&
+        double.IsFinite(Right) &&
+        double.IsFinite(Bottom) &&
+        double.IsFinite(Top) &&
+        double.IsFinite(Near) &&
+        double.IsFinite(Far) &&
+        Left < Right &&
+        Bottom < Top &&
+        Near > 0 &&
+        Near < Far;
+}
+
 public sealed record ThreeDmNamedViewInfo(
     string Name,
     Point3d CameraLocation,
@@ -114,6 +135,8 @@ public sealed record ThreeDmNamedViewInfo(
     bool IsPerspectiveProjection)
 {
     public double Camera35mmLensLength { get; init; }
+
+    public ThreeDmViewFrustumInfo? Frustum { get; init; }
 }
 
 public sealed record ThreeDmSceneObject(

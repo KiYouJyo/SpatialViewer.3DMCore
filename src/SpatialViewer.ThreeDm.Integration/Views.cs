@@ -8,6 +8,14 @@ public enum ThreeDmCameraProjection
     Orthographic,
 }
 
+public sealed record ThreeDmCameraFrustum(
+    double Left,
+    double Right,
+    double Bottom,
+    double Top,
+    double Near,
+    double Far);
+
 public sealed record ThreeDmCameraState(
     Point3d Location,
     Point3d Target,
@@ -18,6 +26,7 @@ public sealed record ThreeDmCameraState(
 {
     public double VerticalFieldOfViewRadians { get; init; } = Math.PI / 4;
     public double OrthographicHeight { get; init; }
+    public ThreeDmCameraFrustum? SourceFrustum { get; init; }
 }
 
 public sealed record ThreeDmViewPreset(
@@ -50,9 +59,20 @@ public static class ThreeDmViewCatalog
                 target = Add(location, direction, distance);
             }
 
-            var (near, far) = ClipPlanes(distance, radius);
+            var sourceFrustum = view.Frustum is { IsValid: true } value
+                ? new ThreeDmCameraFrustum(
+                    value.Left,
+                    value.Right,
+                    value.Bottom,
+                    value.Top,
+                    value.Near,
+                    value.Far)
+                : null;
+            var (near, far) = sourceFrustum is null
+                ? ClipPlanes(distance, radius)
+                : (sourceFrustum.Near, sourceFrustum.Far);
             var verticalFov = ResolveVerticalFov(
-                view.Camera35mmLensLength,
+                view,
                 aspectRatio,
                 fallbackVerticalFieldOfViewRadians);
             var camera = new ThreeDmCameraState(
@@ -64,7 +84,10 @@ public static class ThreeDmViewCatalog
                 far)
             {
                 VerticalFieldOfViewRadians = verticalFov,
-                OrthographicHeight = Math.Max(radius * 2.2, 1e-6),
+                OrthographicHeight = sourceFrustum is null
+                    ? Math.Max(radius * 2.2, 1e-6)
+                    : Math.Max(sourceFrustum.Top - sourceFrustum.Bottom, 1e-6),
+                SourceFrustum = sourceFrustum,
             };
 
             return new ThreeDmViewPreset($"named:{index}", view.Name, true, camera);
@@ -173,8 +196,22 @@ public static class ThreeDmViewCatalog
     private static bool IsFinite(Point3d point) =>
         double.IsFinite(point.X) && double.IsFinite(point.Y) && double.IsFinite(point.Z);
 
-    private static double ResolveVerticalFov(double lensLength, double aspectRatio, double fallback)
+    private static double ResolveVerticalFov(
+        ThreeDmNamedViewInfo view,
+        double aspectRatio,
+        double fallback)
     {
+        if (view.IsPerspectiveProjection && view.Frustum is { IsValid: true } frustum)
+        {
+            var height = frustum.Top - frustum.Bottom;
+            var vertical = 2 * Math.Atan(height / (2 * frustum.Near));
+            if (double.IsFinite(vertical) && vertical > 0 && vertical < Math.PI)
+            {
+                return vertical;
+            }
+        }
+
+        var lensLength = view.Camera35mmLensLength;
         if (!double.IsFinite(lensLength) || lensLength <= 0)
         {
             return fallback;
@@ -182,8 +219,8 @@ public static class ThreeDmViewCatalog
 
         const double filmWidthMillimeters = 36.0;
         var horizontal = 2 * Math.Atan(filmWidthMillimeters / (2 * lensLength));
-        var vertical = 2 * Math.Atan(Math.Tan(horizontal * 0.5) / aspectRatio);
-        return double.IsFinite(vertical) && vertical > 0 && vertical < Math.PI ? vertical : fallback;
+        var fromLens = 2 * Math.Atan(Math.Tan(horizontal * 0.5) / aspectRatio);
+        return double.IsFinite(fromLens) && fromLens > 0 && fromLens < Math.PI ? fromLens : fallback;
     }
 
     private static void ValidateAspectRatio(double value)

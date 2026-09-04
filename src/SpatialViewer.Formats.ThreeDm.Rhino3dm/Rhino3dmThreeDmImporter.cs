@@ -600,6 +600,25 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
         foreach (var view in model.AllNamedViews)
         {
             var viewport = view.Viewport;
+            ThreeDmViewFrustumInfo? frustum = null;
+            if (viewport.GetFrustum(
+                    out var left,
+                    out var right,
+                    out var bottom,
+                    out var top,
+                    out var nearDistance,
+                    out var farDistance))
+            {
+                var candidate = new ThreeDmViewFrustumInfo(
+                    left,
+                    right,
+                    bottom,
+                    top,
+                    nearDistance,
+                    farDistance);
+                frustum = candidate.IsValid ? candidate : null;
+            }
+
             result.Add(new ThreeDmNamedViewInfo(
                 view.Name ?? string.Empty,
                 ConvertPoint(viewport.CameraLocation),
@@ -609,6 +628,7 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
                 viewport.IsPerspectiveProjection)
             {
                 Camera35mmLensLength = viewport.Camera35mmLensLength,
+                Frustum = frustum,
             });
         }
 
