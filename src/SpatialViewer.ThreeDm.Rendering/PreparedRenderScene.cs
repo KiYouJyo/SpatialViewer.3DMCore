@@ -60,20 +60,23 @@ public sealed class ThreeDmPreparedRenderSceneBuilder
             nonMesh.PointSets,
             diagnostics)
         {
-            MeshDrawPolicies = CreateMeshDrawPolicies(document, shared, settings.DisplayMode),
+            MeshDrawPolicies = CreateMeshDrawPolicies(document, shared, settings.DisplayMode, settings.Tessellation),
         };
     }
 
     private static ThreeDmPreparedMeshDrawPolicy[] CreateMeshDrawPolicies(
         ThreeDmSceneDocument document,
         ThreeDmSharedMeshScene shared,
-        ThreeDmRenderDisplayMode displayMode)
+        ThreeDmRenderDisplayMode displayMode,
+        ThreeDmTessellationSettings? tessellationSettings)
     {
         var kinds = document.Objects.ToDictionary(item => item.Id, item => item.GeometryKind);
         return shared.Geometries.Select(geometry =>
         {
             kinds.TryGetValue(geometry.SourceObjectId, out var kind);
-            var hasSemanticWire = kind is ThreeDmGeometryKind.Brep or ThreeDmGeometryKind.Extrusion;
+            var hasSemanticWire =
+                kind == ThreeDmGeometryKind.Extrusion ||
+                (kind == ThreeDmGeometryKind.Brep && (tessellationSettings?.IncludeBrepEdges ?? true));
             return displayMode switch
             {
                 ThreeDmRenderDisplayMode.Shaded =>
