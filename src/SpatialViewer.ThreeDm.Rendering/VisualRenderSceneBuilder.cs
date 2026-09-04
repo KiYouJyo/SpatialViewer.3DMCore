@@ -12,7 +12,13 @@ public sealed class ThreeDmVisualRenderSceneBuilder
 
     public ThreeDmRenderScene Build(
         ThreeDmSceneDocument document,
-        ThreeDmVisualRenderSettings? settings = null)
+        ThreeDmVisualRenderSettings? settings = null) =>
+        Build(document, settings, ThreeDmRenderPrimitiveMask.All);
+
+    public ThreeDmRenderScene Build(
+        ThreeDmSceneDocument document,
+        ThreeDmVisualRenderSettings? settings,
+        ThreeDmRenderPrimitiveMask primitiveMask)
     {
         ArgumentNullException.ThrowIfNull(document);
         settings ??= new ThreeDmVisualRenderSettings();
@@ -23,7 +29,7 @@ public sealed class ThreeDmVisualRenderSceneBuilder
                 .Select(item => item with { IsVisible = item.SourceObjectVisible ?? item.IsVisible })
                 .ToArray(),
         };
-        var geometryScene = _geometryBuilder.Build(geometryDocument, settings.Tessellation);
+        var geometryScene = _geometryBuilder.Build(geometryDocument, settings.Tessellation, primitiveMask);
         var appearanceScene = ThreeDmVisualFidelityResolver.Apply(document, geometryScene);
         return ThreeDmDisplayModeResolver.Apply(document, appearanceScene, settings.DisplayMode);
     }

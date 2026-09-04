@@ -1,5 +1,16 @@
 namespace SpatialViewer.ThreeDm.Rendering;
 
+[Flags]
+public enum ThreeDmRenderPrimitiveMask
+{
+    None = 0,
+    Meshes = 1,
+    Curves = 2,
+    PointSets = 4,
+    All = Meshes | Curves | PointSets,
+}
+
+
 public readonly record struct ThreeDmRenderVertex(double X, double Y, double Z);
 
 public readonly record struct ThreeDmRenderNormal(double X, double Y, double Z);

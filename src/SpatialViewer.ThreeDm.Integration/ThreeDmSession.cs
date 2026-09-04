@@ -18,6 +18,7 @@ public sealed partial class ThreeDmSession : IAsyncDisposable
     private readonly IThreeDmImporter _importer;
     private readonly ThreeDmVisualRenderSceneBuilder _visualBuilder = new();
     private readonly ThreeDmSharedMeshSceneBuilder _sharedBuilder = new();
+    private readonly ThreeDmPreparedRenderSceneBuilder _preparedBuilder = new();
     private readonly ThreeDmLayerVisibilityOverrides _layerOverrides = new();
     private CancellationTokenSource? _openCancellation;
     private Task<ThreeDmSceneDocument>? _openOperation;
@@ -128,6 +129,7 @@ public sealed partial class ThreeDmSession : IAsyncDisposable
             _layerOverrides.Clear();
             _visualBuilder.ClearCache();
             _sharedBuilder.ClearCache();
+            _preparedBuilder.ClearCache();
             _state = ThreeDmSessionState.Opening;
             lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _openCancellation = lifetime;
@@ -250,6 +252,7 @@ public sealed partial class ThreeDmSession : IAsyncDisposable
             _layerOverrides.Clear();
             _visualBuilder.ClearCache();
             _sharedBuilder.ClearCache();
+            _preparedBuilder.ClearCache();
             _state = ThreeDmSessionState.Closed;
         }
     }
@@ -292,6 +295,9 @@ public sealed partial class ThreeDmSession : IAsyncDisposable
 
     public ThreeDmSharedMeshScene BuildSharedMeshScene(ThreeDmTessellationSettings? settings = null) =>
         _sharedBuilder.Build(GetDisplayDocument(), settings);
+
+    public ThreeDmPreparedRenderScene BuildPreparedRenderScene(ThreeDmVisualRenderSettings? settings = null) =>
+        _preparedBuilder.Build(GetDisplayDocument(), settings);
 
     public ThreeDmCameraFit GetCameraFit(ThreeDmCameraFitOptions? options = null) =>
         ThreeDmCameraFitCalculator.Calculate(RequireOpenDocument().Bounds, options);
