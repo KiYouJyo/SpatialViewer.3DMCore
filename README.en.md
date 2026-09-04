@@ -4,7 +4,7 @@
 
 Independent Rhino 3DM viewing core for SpatialViewer. This repository owns 3DM reader adapters, Rhino document semantics, 3D geometry/scene translation, rendering abstractions, and regression tests. The WinUI 3 product UI remains in `KiYouJyo/SpatialViewer`.
 
-> Current version: 0.8.0. Phase 7 SpatialViewer Integration Contract is complete. A UI-independent `SpatialViewer.ThreeDm.Integration` host layer now fixes the 1.x host-contract window, open/close/cancel lifecycle, model bounds and camera fit, hierarchical layer overrides, stable selection IDs, and property inspection. Integration no longer depends directly on the Rhino3dm adapter; the product injects an `IThreeDmImporter`. The core is ready for SpatialViewer's concrete 3D viewport integration.
+> Current version: 1.0.0. The Rhino/3DM read-only viewing core is complete for product integration: full and progressive sessions, standard and Rhino named views with 35mm lens semantics, layer overrides, stable selection/property inspection, semantic overlays, a shared-instance mesh + curve/point render package, Windows large-coordinate upload backend, and independently validated x64 kernel packages with manifest/SHA-256 verification. The next stage belongs in the SpatialViewer WinUI 3/GPU viewport.
 
 ## Design principles
 
