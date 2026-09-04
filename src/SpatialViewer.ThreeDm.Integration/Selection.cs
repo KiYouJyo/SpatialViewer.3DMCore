@@ -30,6 +30,7 @@ public sealed record ThreeDmSelectionProperties(
     Guid? MaterialId,
     string? MaterialName,
     bool SourceVisible,
+    bool EffectiveVisible,
     IReadOnlyList<Guid> InstancePath,
     IReadOnlyList<string> InstanceNames);
 
@@ -71,9 +72,26 @@ public static class ThreeDmSelectionCatalog
             .ToArray();
     }
 
+    public static IReadOnlyList<ThreeDmSelectionId> Create(ThreeDmSharedMeshScene scene)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+
+        return scene.Instances
+            .Select(instance => ThreeDmSelectionId.Create(
+                instance.SourceObjectId,
+                instance.SourceSubobjectIndex,
+                instance.InstancePath))
+            .Distinct()
+            .OrderBy(item => item.SourceObjectId)
+            .ThenBy(item => item.SourceSubobjectIndex)
+            .ThenBy(item => item.InstancePathKey, StringComparer.Ordinal)
+            .ToArray();
+    }
+
     public static ThreeDmSelectionProperties? Resolve(
         ThreeDmSceneDocument document,
-        ThreeDmSelectionId selectionId)
+        ThreeDmSelectionId selectionId,
+        ThreeDmLayerVisibilityOverrides? overrides = null)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -93,6 +111,11 @@ public static class ThreeDmSelectionCatalog
         var instanceNames = instancePath
             .Select(id => document.Objects.FirstOrDefault(item => item.Id == id)?.Name ?? id.ToString("D"))
             .ToArray();
+        var effectiveVisible =
+            IsObjectEffectivelyVisible(sceneObject, document, overrides) &&
+            instancePath.All(id =>
+                document.Objects.FirstOrDefault(item => item.Id == id) is not { } instanceObject ||
+                IsObjectEffectivelyVisible(instanceObject, document, overrides));
 
         return new ThreeDmSelectionProperties(
             selectionId,
@@ -104,8 +127,23 @@ public static class ThreeDmSelectionCatalog
             sceneObject.MaterialId,
             material?.Name,
             sceneObject.SourceObjectVisible ?? sceneObject.IsVisible,
+            effectiveVisible,
             instancePath,
             instanceNames);
+    }
+
+    private static bool IsObjectEffectivelyVisible(
+        ThreeDmSceneObject sceneObject,
+        ThreeDmSceneDocument document,
+        ThreeDmLayerVisibilityOverrides? overrides)
+    {
+        if (!(sceneObject.SourceObjectVisible ?? sceneObject.IsVisible))
+        {
+            return false;
+        }
+
+        return sceneObject.LayerId is not Guid layerId ||
+               ThreeDmLayerTreeBuilder.IsEffectivelyVisible(layerId, document, overrides);
     }
 
     private static Guid[] ParseInstancePath(string key)

@@ -302,8 +302,20 @@ public sealed class ThreeDmSession : IAsyncDisposable
         return ThreeDmSelectionCatalog.Create(scene);
     }
 
-    public ThreeDmSelectionProperties? GetSelectionProperties(ThreeDmSelectionId selectionId) =>
-        ThreeDmSelectionCatalog.Resolve(RequireOpenDocument(), selectionId);
+    public IReadOnlyList<ThreeDmSelectionId> GetSelectionIds(ThreeDmSharedMeshScene scene)
+    {
+        _ = RequireOpenDocument();
+        return ThreeDmSelectionCatalog.Create(scene);
+    }
+
+    public ThreeDmSelectionProperties? GetSelectionProperties(ThreeDmSelectionId selectionId)
+    {
+        var document = RequireOpenDocument();
+        lock (_sync)
+        {
+            return ThreeDmSelectionCatalog.Resolve(document, selectionId, _layerOverrides);
+        }
+    }
 
     public async ValueTask DisposeAsync() => await CloseAsync().ConfigureAwait(false);
 
