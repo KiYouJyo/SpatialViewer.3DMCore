@@ -17,6 +17,8 @@ public sealed record WindowsSharedMeshGeometryUpload(
     IReadOnlyList<WindowsRenderFloat3> Vertices,
     IReadOnlyList<int> Indices)
 {
+    public IReadOnlyList<int> WireIndices { get; init; } = Array.Empty<int>();
+
     public IReadOnlyList<WindowsRenderFloat3> Normals { get; init; } = Array.Empty<WindowsRenderFloat3>();
 
     public IReadOnlyList<WindowsRenderFloat2> TextureCoordinates { get; init; } = Array.Empty<WindowsRenderFloat2>();
@@ -79,6 +81,7 @@ public static class WindowsThreeDmSharedUploadProjection
             geometry.Vertices.Select(vertex => Rebase(vertex, localOrigin)).ToArray(),
             geometry.Indices.ToArray())
         {
+            WireIndices = CreateWireIndices(geometry.Indices),
             Normals = geometry.Normals
                 .Select(normal => new WindowsRenderFloat3(
                     CheckedFloat(normal.X),
@@ -110,6 +113,33 @@ public static class WindowsThreeDmSharedUploadProjection
             ColorArgb = instance.ColorArgb,
             Appearance = ConvertAppearance(instance.Appearance),
         };
+    }
+
+    private static int[] CreateWireIndices(IReadOnlyList<int> triangleIndices)
+    {
+        var edges = new HashSet<(int A, int B)>();
+        for (var i = 0; i + 2 < triangleIndices.Count; i += 3)
+        {
+            AddEdge(triangleIndices[i], triangleIndices[i + 1], edges);
+            AddEdge(triangleIndices[i + 1], triangleIndices[i + 2], edges);
+            AddEdge(triangleIndices[i + 2], triangleIndices[i], edges);
+        }
+
+        var result = new int[edges.Count * 2];
+        var cursor = 0;
+        foreach (var (a, b) in edges.OrderBy(edge => edge.A).ThenBy(edge => edge.B))
+        {
+            result[cursor++] = a;
+            result[cursor++] = b;
+        }
+
+        return result;
+    }
+
+    private static void AddEdge(int left, int right, HashSet<(int A, int B)> edges)
+    {
+        var edge = left <= right ? (left, right) : (right, left);
+        edges.Add(edge);
     }
 
     private static WindowsRenderOrigin ResolveOrigin(ThreeDmSharedMeshScene scene)

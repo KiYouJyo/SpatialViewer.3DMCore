@@ -155,6 +155,25 @@ Implemented:
 
 **Exit criteria:** SpatialViewer can bind to one UI-independent host assembly for document lifecycle and viewer state, while reader adapters and concrete Windows GPU rendering remain replaceable implementation details.
 
+## Phase 8 — Product-ready core completion
+
+**Status: completed in 1.0.0**
+
+Implemented:
+
+- Progressive opening promoted into the stable ThreeDmSession host contract, preserving header/object-batch/completion updates while still producing one final semantic document.
+- Standard Perspective/Top/Front/Right camera presets plus Rhino named-view presets with perspective/orthographic projection and preserved 35mm lens length.
+- Product-facing document summaries, diagnostics and richer geometry inspection metadata.
+- Semantic overlay catalog for Annotation, TextDot, Hatch, Light and ClippingPlane with accumulated instance transforms and InstancePath.
+- ThreeDmPreparedRenderScene: shared instance meshes plus curves/point sets, avoiding repeated Block mesh expansion in normal product rendering.
+- Windows backend upgraded from a marker type to a callable projection backend with capability reporting, shared-mesh upload, curve/point upload, large-coordinate origin rebasing and deduplicated wire indices for Wireframe/ShadedWithEdges rendering.
+- Independent win-x64 kernel packaging with a stable package contract, release manifest, per-file/assembly SHA-256 hashes, archive checksum and unpack-and-verify CI gate.
+- Tag-driven GitHub release workflow for independently versioned 3DMCore packages.
+- Advanced adapter-level regression coverage where Rhino3dm 8.32 cannot synthesize equivalent serializable fixtures.
+
+**Completion boundary:** 1.0.0 completes the reusable read/view core. A concrete Direct3D renderer, swap chain, GPU ID-picking pass, mouse/keyboard camera interaction, WinUI controls and tab/workspace composition belong to the SpatialViewer product repository.
+
+**Deliberate compatibility boundary:** the pinned offline Rhino3dm adapter preserves SubD control-net semantics but does not invent a smooth SubD limit surface when the reader does not expose a compatible offline display mesh. Full Rhino Render/Cycles/RDK parity, Grasshopper evaluation and proprietary plug-in object reconstruction remain non-goals.
 ## Fixture matrix
 
 Maintain small redistributable fixtures for each semantic feature and a separate non-redistributable local corpus for real-world regression. Minimum fixture groups:

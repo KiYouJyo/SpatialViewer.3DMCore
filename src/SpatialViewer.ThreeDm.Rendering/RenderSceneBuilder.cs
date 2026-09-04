@@ -11,7 +11,13 @@ public sealed class ThreeDmRenderSceneBuilder
 
     public void ClearCache() => _cache.Clear();
 
-    public ThreeDmRenderScene Build(ThreeDmSceneDocument document, ThreeDmTessellationSettings? settings = null)
+    public ThreeDmRenderScene Build(ThreeDmSceneDocument document, ThreeDmTessellationSettings? settings = null) =>
+        Build(document, settings, ThreeDmRenderPrimitiveMask.All);
+
+    public ThreeDmRenderScene Build(
+        ThreeDmSceneDocument document,
+        ThreeDmTessellationSettings? settings,
+        ThreeDmRenderPrimitiveMask primitiveMask)
     {
         ArgumentNullException.ThrowIfNull(document);
         settings ??= new ThreeDmTessellationSettings();
@@ -42,6 +48,7 @@ public sealed class ThreeDmRenderSceneBuilder
                 objectsById,
                 definitionsById,
                 settings,
+                primitiveMask,
                 modelTolerance,
                 meshes,
                 pointSets,
@@ -65,6 +72,7 @@ public sealed class ThreeDmRenderSceneBuilder
         IReadOnlyDictionary<Guid, ThreeDmSceneObject> objectsById,
         IReadOnlyDictionary<Guid, ThreeDmInstanceDefinitionInfo> definitionsById,
         ThreeDmTessellationSettings settings,
+        ThreeDmRenderPrimitiveMask primitiveMask,
         double modelTolerance,
         List<ThreeDmRenderMesh> meshes,
         List<ThreeDmRenderPointSet> pointSets,
@@ -117,6 +125,7 @@ public sealed class ThreeDmRenderSceneBuilder
                     objectsById,
                     definitionsById,
                     settings,
+                    primitiveMask,
                     modelTolerance,
                     meshes,
                     pointSets,
@@ -153,19 +162,28 @@ public sealed class ThreeDmRenderSceneBuilder
             return;
         }
 
-        foreach (var mesh in local.Meshes)
+        if ((primitiveMask & ThreeDmRenderPrimitiveMask.Meshes) != 0)
         {
-            meshes.Add(TransformMesh(mesh, accumulatedTransform, instancePath));
+            foreach (var mesh in local.Meshes)
+            {
+                meshes.Add(TransformMesh(mesh, accumulatedTransform, instancePath));
+            }
         }
 
-        foreach (var pointSet in local.PointSets)
+        if ((primitiveMask & ThreeDmRenderPrimitiveMask.PointSets) != 0)
         {
-            pointSets.Add(TransformPointSet(pointSet, accumulatedTransform, instancePath));
+            foreach (var pointSet in local.PointSets)
+            {
+                pointSets.Add(TransformPointSet(pointSet, accumulatedTransform, instancePath));
+            }
         }
 
-        foreach (var curve in local.Curves)
+        if ((primitiveMask & ThreeDmRenderPrimitiveMask.Curves) != 0)
         {
-            curves.Add(TransformCurve(curve, accumulatedTransform, instancePath));
+            foreach (var curve in local.Curves)
+            {
+                curves.Add(TransformCurve(curve, accumulatedTransform, instancePath));
+            }
         }
 
         diagnostics.AddRange(local.Diagnostics);

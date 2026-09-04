@@ -59,6 +59,8 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
         options ??= new ThreeDmImportOptions();
         ValidateImportRequest(path, options, cancellationToken);
 
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var producerToken = lifetime.Token;
         var channel = Channel.CreateBounded<ThreeDmProgressiveImportUpdate>(new BoundedChannelOptions(4)
         {
             SingleReader = true,
@@ -66,15 +68,31 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
             FullMode = BoundedChannelFullMode.Wait,
         });
         var producer = Task.Run(
-            () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, cancellationToken),
+            () => ProduceProgressiveUpdatesAsync(path, options, channel.Writer, producerToken),
             CancellationToken.None);
 
-        await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        var completedNaturally = false;
+        try
         {
-            yield return update;
-        }
+            await foreach (var update in channel.Reader.ReadAllAsync(producerToken).ConfigureAwait(false))
+            {
+                yield return update;
+            }
 
-        await producer.ConfigureAwait(false);
+            completedNaturally = true;
+        }
+        finally
+        {
+            lifetime.Cancel();
+            if (completedNaturally)
+            {
+                await producer.ConfigureAwait(false);
+            }
+            else
+            {
+                ObserveFault(producer);
+            }
+        }
     }
 
     private static ThreeDmSceneDocument ImportCore(
@@ -600,13 +618,36 @@ public sealed class Rhino3dmThreeDmImporter : IThreeDmProgressiveImporter
         foreach (var view in model.AllNamedViews)
         {
             var viewport = view.Viewport;
+            ThreeDmViewFrustumInfo? frustum = null;
+            if (viewport.GetFrustum(
+                    out var left,
+                    out var right,
+                    out var bottom,
+                    out var top,
+                    out var nearDistance,
+                    out var farDistance))
+            {
+                var candidate = new ThreeDmViewFrustumInfo(
+                    left,
+                    right,
+                    bottom,
+                    top,
+                    nearDistance,
+                    farDistance);
+                frustum = candidate.IsValid ? candidate : null;
+            }
+
             result.Add(new ThreeDmNamedViewInfo(
                 view.Name ?? string.Empty,
                 ConvertPoint(viewport.CameraLocation),
                 ConvertVector(viewport.CameraDirection),
                 ConvertVector(viewport.CameraUp),
                 ConvertPoint(viewport.TargetPoint),
-                viewport.IsPerspectiveProjection));
+                viewport.IsPerspectiveProjection)
+            {
+                Camera35mmLensLength = viewport.Camera35mmLensLength,
+                Frustum = frustum,
+            });
         }
 
         return result;
