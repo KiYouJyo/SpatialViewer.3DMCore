@@ -18,3 +18,10 @@ jobs:
       - run: dotnet build SpatialViewer.3DMCore.sln -c Debug --no-restore
       - run: dotnet build SpatialViewer.3DMCore.sln -c Release --no-restore
       - run: dotnet test SpatialViewer.3DMCore.sln -c Release --no-build --verbosity normal
+      - name: Package kernel
+        shell: pwsh
+        run: ./tools/package-kernel.ps1 -Configuration Release -OutputDirectory artifacts/kernel -SkipBuild
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ThreeDmCore-x64
+          path: artifacts/kernel/ThreeDmCore-*-x64.zip
