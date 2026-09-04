@@ -4,8 +4,32 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 
 ## [Unreleased]
 
-### Planned
-- Add real-world architectural/product Rhino fixture coverage, including Rhino-produced SubD, Light and ClippingPlane samples.
+Future work must preserve the 1.x host contract unless a deliberate major-version break is required.
+
+## [1.0.0] - 2026-09-04
+
+### Added
+- Progressive opening through the stable ThreeDmSession host contract.
+- Standard Perspective/Top/Front/Right presets and Rhino named-view camera states with 35mm lens preservation.
+- Document summaries, diagnostic access and richer source-geometry inspection metadata.
+- Semantic overlay catalog for Annotation, TextDot, Hatch, Light and ClippingPlane, including nested-instance transforms and identity.
+- Product-ready ThreeDmPreparedRenderScene combining shared instance meshes with curves and point sets.
+- Functional Windows projection backend with capability reporting and a common large-coordinate rebasing boundary.
+- Deduplicated shared-mesh wire indices for Wireframe and ShadedWithEdges rendering without Block mesh expansion.
+- Independent win-x64 package contract, release manifest, per-file SHA-256 validation, archive checksum and tag release workflow.
+
+### Changed
+- Integration/session composition stays reader-independent; Rhino3dm remains isolated behind IThreeDmImporter.
+- Named views no longer lose Rhino's 35mm lens metadata.
+- 1.0 documentation formally moves Direct3D/WinUI rendering, GPU picking and interaction into the SpatialViewer product boundary.
+
+### Tests
+- Added progressive-host, camera preset, inspection, prepared-render, Windows backend, semantic-overlay, named-view lens and package-contract regressions.
+- Advanced Light/ClippingPlane/SubD adapter semantics are tested directly where pinned Rhino3dm 8.32 cannot synthesize equivalent serializable File3dm fixtures.
+
+### Boundaries
+- SubD control-net semantics are preserved; 1.0 does not fabricate a smooth limit-surface mesh when the pinned offline reader cannot supply one.
+- Full Rhino Render/Cycles/RDK parity, Grasshopper evaluation and proprietary plug-in object reconstruction remain explicit non-goals.
 
 ## [0.8.0] - 2026-09-04
 
