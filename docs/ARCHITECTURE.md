@@ -13,8 +13,11 @@
   -> tessellation / geometry-cache generation
   -> backend-neutral render geometry
   -> visual fidelity resolution (layer/material/instance/display mode)
-  -> expanded render scene OR shared geometry + instance transforms
-  -> optional Windows origin-rebased upload projection
+  -> expanded render scene OR prepared render scene
+       -> shared geometry + instance transforms
+       -> curves / point sets / semantic overlays
+  -> Windows origin-rebased upload backend
+       -> triangle indices + deduplicated wire indices
   -> SpatialViewer.ThreeDm.Integration host contract
   -> SpatialViewer UI / concrete renderer
 ```
@@ -69,3 +72,19 @@ Detailed execution and baseline policy is documented in [`PERFORMANCE.md`](PERFO
 `SpatialViewer.ThreeDm.Integration` is the stable product-facing boundary starting with 0.8.0. The contract name is `SpatialViewer.ThreeDmHost`, API version 1, with a 1.x compatibility window. The host layer must remain UI-independent and reader-independent: it may orchestrate `IThreeDmImporter`, semantic documents and render-scene builders, but it must not construct Rhino3dm adapters or WinUI controls internally.
 
 A `ThreeDmSession` owns one open-document lifecycle at a time. Closing or cancelling follows the importer cancellation contract, clears render caches and runtime layer overrides, and leaves no WinUI-owned resources inside the core repository. Layer overrides are projected onto a display document without mutating source document semantics, allowing the geometry cache to remain reusable.
+
+## Product-ready render contract
+
+Starting with 1.0.0, product rendering should prefer ThreeDmPreparedRenderScene. Mesh payloads remain shared by source object/subobject and are referenced by occurrence transforms, while curves and point sets stay independent primitives. The Windows backend projects this neutral package into float upload structures around one rebased scene origin. Shared mesh uploads include both triangle indices and deduplicated wire indices so a concrete renderer can implement Shaded, ShadedWithEdges and Wireframe without rebuilding Rhino source geometry or expanding repeated Block meshes.
+
+WindowsThreeDmRenderingBackend is an upload/projection backend, not a Direct3D device owner. GPU resources, swap chains, shaders, depth buffers, ID-picking render targets and WinUI surface lifetime belong to the SpatialViewer product.
+
+## Camera and overlay contract
+
+The Integration layer exposes standard views and Rhino named views as source-independent camera states. Named-view 35mm lens length is preserved by the reader and converted into a viewport-aspect-aware field of view instead of replacing Rhino perspective with a fixed camera.
+
+Annotation, TextDot, Hatch, Light and ClippingPlane remain semantic data. ThreeDmSemanticOverlayCatalog resolves their occurrence transform and InstancePath so the product does not need to traverse instance-definition graphs itself.
+
+## Distribution contract
+
+The 1.0 kernel can be distributed independently as a win-x64 package. threedmcore-release.json declares framework/runtime, host compatibility and required assembly hashes. CI creates the archive, emits an archive SHA-256 file, unpacks the resulting package and verifies every manifest entry before accepting the build. A tag release can publish the archive, manifest and checksum as separate assets.
