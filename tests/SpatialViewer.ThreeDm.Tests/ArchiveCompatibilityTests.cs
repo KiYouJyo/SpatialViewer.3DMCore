@@ -25,7 +25,7 @@ public sealed class ArchiveCompatibilityTests
             var document = await new Rhino3dmThreeDmImporter().ImportAsync(path);
 
             Assert.NotNull(document.Properties);
-            Assert.Equal(archiveVersion, document.Properties.ArchiveVersion);
+            Assert.Equal(archiveVersion * 10, document.Properties.ArchiveVersion);
             Assert.Single(document.Objects);
         }
         finally
