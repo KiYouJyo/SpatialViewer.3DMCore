@@ -4,7 +4,7 @@
 
 SpatialViewer 的独立 Rhino 3DM 看图内核仓库。这里维护 3DM 文件读取适配、Rhino 文档语义模型、三维几何/场景转换、渲染抽象与回归测试；WinUI 3 产品界面保留在 `KiYouJyo/SpatialViewer`。
 
-> 当前版本：0.7.0，Phase 6 Performance and Robustness 已完成。内核已具备后台导入与取消/进度、archive 读取后的渐进式对象批次、文档与单几何资源上限、共享实例网格及大坐标 Windows instanced upload，并保留此前的语义几何、自适应派生几何和视觉保真能力。下一阶段进入 Phase 7 SpatialViewer Integration Contract，重点固定打开/关闭/取消生命周期、相机适配、图层覆盖、选择 ID 与属性检查接口。
+> 当前版本：0.8.0，Phase 7 SpatialViewer Integration Contract 已完成。新增 UI 无关的 `SpatialViewer.ThreeDm.Integration` 宿主层，固定 1.x Host Contract、打开/关闭/取消生命周期、模型范围与相机适配、层级图层覆盖、稳定 selection ID 与属性检查接口；Integration 不再直接依赖 Rhino3dm adapter，而由产品显式注入 `IThreeDmImporter`。当前内核已经具备进入 SpatialViewer 主程序 3D 视口接入阶段的稳定边界。
 
 ## 设计原则
 

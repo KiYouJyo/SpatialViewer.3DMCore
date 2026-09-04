@@ -4,7 +4,7 @@
 
 SpatialViewer 向けの独立した Rhino 3DM ビューアー内核です。本リポジトリでは 3DM 読み込みアダプター、Rhino ドキュメント意味モデル、3D ジオメトリ／シーン変換、レンダリング抽象、回帰テストを管理します。WinUI 3 の製品 UI は `KiYouJyo/SpatialViewer` に残します。
 
-> 現在のバージョンは 0.7.0 で、Phase 6 Performance and Robustness まで完了しています。バックグラウンド読み込みとキャンセル／進捗、アーカイブ読み込み後の段階的オブジェクトバッチ、ドキュメント／単一ジオメトリの安全上限、共有インスタンス Mesh、巨大座標対応の Windows instanced upload を実装し、従来の意味ジオメトリ、適応的派生ジオメトリ、Visual Fidelity も維持します。次の Phase 7 では SpatialViewer 統合契約を固定し、open/close/cancel ライフサイクル、camera fit、レイヤー上書き、selection ID、プロパティ参照を整備します。
+> 現在のバージョンは 0.8.0 で、Phase 7 SpatialViewer Integration Contract まで完了しています。UI 非依存の `SpatialViewer.ThreeDm.Integration` ホスト層を追加し、1.x Host Contract、open/close/cancel ライフサイクル、モデル境界と camera fit、階層レイヤー上書き、安定した selection ID、プロパティ参照を固定しました。Integration は Rhino3dm adapter に直接依存せず、製品側が `IThreeDmImporter` を明示的に注入します。これにより SpatialViewer の具体的な 3D viewport 統合へ進める安定境界が整いました。
 
 ## 設計原則
 
