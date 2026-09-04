@@ -314,6 +314,18 @@ public sealed partial class ThreeDmSession : IAsyncDisposable
         return ThreeDmSelectionCatalog.Create(scene);
     }
 
+    public IReadOnlyList<ThreeDmSelectionId> GetSelectionIds(ThreeDmPreparedRenderScene scene)
+    {
+        _ = RequireOpenDocument();
+        return ThreeDmSelectionCatalog.Create(scene);
+    }
+
+    public IReadOnlyList<ThreeDmSelectionId> GetSelectionIds(IReadOnlyList<ThreeDmSemanticOverlay> overlays)
+    {
+        _ = RequireOpenDocument();
+        return ThreeDmSelectionCatalog.Create(overlays);
+    }
+
     public ThreeDmSelectionProperties? GetSelectionProperties(ThreeDmSelectionId selectionId)
     {
         var document = RequireOpenDocument();

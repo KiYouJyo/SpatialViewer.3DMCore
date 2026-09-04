@@ -22,7 +22,7 @@ public static class ThreeDmSemanticOverlayCatalog
 
         foreach (var sceneObject in document.Objects)
         {
-            if (!sceneObject.IsVisible || members.Contains(sceneObject.Id))
+            if (!IsObjectVisible(sceneObject, document) || members.Contains(sceneObject.Id))
             {
                 continue;
             }
@@ -34,6 +34,7 @@ public static class ThreeDmSemanticOverlayCatalog
                 new HashSet<Guid>(),
                 objects,
                 definitions,
+                document,
                 result);
         }
 
@@ -47,9 +48,10 @@ public static class ThreeDmSemanticOverlayCatalog
         HashSet<Guid> definitionStack,
         IReadOnlyDictionary<Guid, ThreeDmSceneObject> objects,
         IReadOnlyDictionary<Guid, ThreeDmInstanceDefinitionInfo> definitions,
+        ThreeDmSceneDocument document,
         List<ThreeDmSemanticOverlay> result)
     {
-        if (!sceneObject.IsVisible || sceneObject.Geometry is null)
+        if (!IsObjectVisible(sceneObject, document) || sceneObject.Geometry is null)
         {
             return;
         }
@@ -68,7 +70,7 @@ public static class ThreeDmSemanticOverlayCatalog
             {
                 if (objects.TryGetValue(objectId, out var member))
                 {
-                    Append(member, transform, path, definitionStack, objects, definitions, result);
+                    Append(member, transform, path, definitionStack, objects, definitions, document, result);
                 }
             }
 
@@ -90,6 +92,17 @@ public static class ThreeDmSemanticOverlayCatalog
                 accumulatedTransform,
                 instancePath.ToArray()));
         }
+    }
+
+    private static bool IsObjectVisible(ThreeDmSceneObject sceneObject, ThreeDmSceneDocument document)
+    {
+        if (!(sceneObject.SourceObjectVisible ?? sceneObject.IsVisible))
+        {
+            return false;
+        }
+
+        return sceneObject.LayerId is not Guid layerId ||
+               ThreeDmLayerTreeBuilder.IsEffectivelyVisible(layerId, document);
     }
 
     private static Guid[] AppendPath(IReadOnlyList<Guid> path, Guid instanceId)

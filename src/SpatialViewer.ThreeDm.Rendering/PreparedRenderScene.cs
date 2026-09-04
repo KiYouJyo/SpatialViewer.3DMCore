@@ -2,12 +2,21 @@ using SpatialViewer.ThreeDm.Core;
 
 namespace SpatialViewer.ThreeDm.Rendering;
 
+public sealed record ThreeDmPreparedMeshDrawPolicy(
+    int GeometryIndex,
+    bool DrawFill,
+    bool DrawWireIndices);
+
 public sealed record ThreeDmPreparedRenderScene(
     ThreeDmRenderDisplayMode DisplayMode,
     ThreeDmSharedMeshScene SharedMeshes,
     IReadOnlyList<ThreeDmRenderCurve> Curves,
     IReadOnlyList<ThreeDmRenderPointSet> PointSets,
-    IReadOnlyList<ThreeDmRenderDiagnostic> Diagnostics);
+    IReadOnlyList<ThreeDmRenderDiagnostic> Diagnostics)
+{
+    public IReadOnlyList<ThreeDmPreparedMeshDrawPolicy> MeshDrawPolicies { get; init; } =
+        Array.Empty<ThreeDmPreparedMeshDrawPolicy>();
+}
 
 public sealed class ThreeDmPreparedRenderSceneBuilder
 {
@@ -49,7 +58,34 @@ public sealed class ThreeDmPreparedRenderSceneBuilder
             shared,
             curves,
             nonMesh.PointSets,
-            diagnostics);
+            diagnostics)
+        {
+            MeshDrawPolicies = CreateMeshDrawPolicies(document, shared, settings.DisplayMode),
+        };
+    }
+
+    private static ThreeDmPreparedMeshDrawPolicy[] CreateMeshDrawPolicies(
+        ThreeDmSceneDocument document,
+        ThreeDmSharedMeshScene shared,
+        ThreeDmRenderDisplayMode displayMode)
+    {
+        var kinds = document.Objects.ToDictionary(item => item.Id, item => item.GeometryKind);
+        return shared.Geometries.Select(geometry =>
+        {
+            kinds.TryGetValue(geometry.SourceObjectId, out var kind);
+            var hasSemanticWire = kind is ThreeDmGeometryKind.Brep or ThreeDmGeometryKind.Extrusion;
+            return displayMode switch
+            {
+                ThreeDmRenderDisplayMode.Shaded =>
+                    new ThreeDmPreparedMeshDrawPolicy(geometry.GeometryIndex, true, false),
+                ThreeDmRenderDisplayMode.ShadedWithEdges =>
+                    new ThreeDmPreparedMeshDrawPolicy(geometry.GeometryIndex, true, !hasSemanticWire),
+                ThreeDmRenderDisplayMode.Wireframe =>
+                    new ThreeDmPreparedMeshDrawPolicy(geometry.GeometryIndex, false, !hasSemanticWire),
+                _ =>
+                    new ThreeDmPreparedMeshDrawPolicy(geometry.GeometryIndex, true, false),
+            };
+        }).ToArray();
     }
 
     private static ThreeDmRenderCurve[] RemoveFilledSemanticEdges(

@@ -16,7 +16,11 @@ public sealed record WindowsPreparedRenderUpload(
     WindowsSharedMeshSceneUpload SharedMeshes,
     IReadOnlyList<WindowsRenderCurveUpload> Curves,
     IReadOnlyList<WindowsRenderPointSetUpload> PointSets,
-    IReadOnlyList<ThreeDmRenderDiagnostic> Diagnostics);
+    IReadOnlyList<ThreeDmRenderDiagnostic> Diagnostics)
+{
+    public IReadOnlyList<ThreeDmPreparedMeshDrawPolicy> MeshDrawPolicies { get; init; } =
+        Array.Empty<ThreeDmPreparedMeshDrawPolicy>();
+}
 
 public interface IWindowsThreeDmRenderingBackend
 {
@@ -66,6 +70,9 @@ public sealed class WindowsThreeDmRenderingBackend : IWindowsThreeDmRenderingBac
             shared,
             primitives.Curves,
             primitives.PointSets,
-            scene.Diagnostics);
+            scene.Diagnostics)
+        {
+            MeshDrawPolicies = scene.MeshDrawPolicies.ToArray(),
+        };
     }
 }

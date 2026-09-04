@@ -72,27 +72,49 @@ public static class ThreeDmSelectionCatalog
                 pointSet.InstancePath));
         }
 
-        return result
-            .OrderBy(item => item.SourceObjectId)
-            .ThenBy(item => item.SourceSubobjectIndex)
-            .ThenBy(item => item.InstancePathKey, StringComparer.Ordinal)
-            .ToArray();
+        return Sort(result);
     }
 
     public static IReadOnlyList<ThreeDmSelectionId> Create(ThreeDmSharedMeshScene scene)
     {
         ArgumentNullException.ThrowIfNull(scene);
 
-        return scene.Instances
-            .Select(instance => ThreeDmSelectionId.Create(
-                instance.SourceObjectId,
-                instance.SourceSubobjectIndex,
-                instance.InstancePath))
-            .Distinct()
-            .OrderBy(item => item.SourceObjectId)
-            .ThenBy(item => item.SourceSubobjectIndex)
-            .ThenBy(item => item.InstancePathKey, StringComparer.Ordinal)
-            .ToArray();
+        return Sort(scene.Instances.Select(instance => ThreeDmSelectionId.Create(
+            instance.SourceObjectId,
+            instance.SourceSubobjectIndex,
+            instance.InstancePath)));
+    }
+
+    public static IReadOnlyList<ThreeDmSelectionId> Create(ThreeDmPreparedRenderScene scene)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+
+        var result = new HashSet<ThreeDmSelectionId>(Create(scene.SharedMeshes));
+        foreach (var curve in scene.Curves)
+        {
+            result.Add(ThreeDmSelectionId.Create(
+                curve.SourceObjectId,
+                curve.SourceSubobjectIndex,
+                curve.InstancePath));
+        }
+
+        foreach (var pointSet in scene.PointSets)
+        {
+            result.Add(ThreeDmSelectionId.Create(
+                pointSet.SourceObjectId,
+                null,
+                pointSet.InstancePath));
+        }
+
+        return Sort(result);
+    }
+
+    public static IReadOnlyList<ThreeDmSelectionId> Create(
+        IReadOnlyList<ThreeDmSemanticOverlay> overlays)
+    {
+        ArgumentNullException.ThrowIfNull(overlays);
+        return Sort(overlays.Select(item =>
+            ThreeDmSelectionId.Create(item.SourceObjectId, null, item.InstancePath)));
     }
 
     public static ThreeDmSelectionProperties? Resolve(
@@ -144,6 +166,14 @@ public static class ThreeDmSelectionCatalog
             GeometryDetails = ThreeDmInspection.CreateGeometryDetails(sceneObject.Geometry),
         };
     }
+
+    private static ThreeDmSelectionId[] Sort(IEnumerable<ThreeDmSelectionId> values) =>
+        values
+            .Distinct()
+            .OrderBy(item => item.SourceObjectId)
+            .ThenBy(item => item.SourceSubobjectIndex)
+            .ThenBy(item => item.InstancePathKey, StringComparer.Ordinal)
+            .ToArray();
 
     private static bool IsObjectEffectivelyVisible(
         ThreeDmSceneObject sceneObject,
