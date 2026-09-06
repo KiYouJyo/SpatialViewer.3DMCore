@@ -266,10 +266,10 @@ public sealed class ThreeDmRenderSceneBuilder
                         sceneObject.Id,
                         fallbackMeshes.Length > 0
                             ? "3DM_RENDER_BREP_FALLBACK_TESSELLATION"
-                            : "3DM_RENDER_BREP_FALLBACK_EMPTY",
+                            : "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
                         fallbackMeshes.Length > 0
                             ? "No embedded Rhino render mesh was stored; Brep faces were tessellated from semantic NURBS surfaces and trim loops."
-                            : "No embedded Rhino render mesh was stored and semantic Brep fallback tessellation produced no triangles."));
+                            : "No embedded Rhino render mesh was stored and no semantic Brep face mesh could be generated; exact edge overlays remain available."));
                 }
                 break;
 
