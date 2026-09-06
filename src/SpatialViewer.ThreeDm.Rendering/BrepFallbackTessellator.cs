@@ -51,8 +51,8 @@ internal static class ThreeDmBrepFallbackTessellator
         Guid sourceObjectId,
         ThreeDmRenderMesh mesh,
         ThreeDmBrepFaceData face,
-        IReadOnlyDictionary<int, ThreeDmBrepLoopData> loops,
-        IReadOnlyDictionary<int, ThreeDmBrepTrimData> trims,
+        Dictionary<int, ThreeDmBrepLoopData> loops,
+        Dictionary<int, ThreeDmBrepTrimData> trims,
         ThreeDmTessellationSettings settings,
         double modelAbsoluteTolerance)
     {
@@ -132,7 +132,7 @@ internal static class ThreeDmBrepFallbackTessellator
     private static List<UvPoint> BuildLoopPolygon(
         Guid sourceObjectId,
         ThreeDmBrepLoopData loop,
-        IReadOnlyDictionary<int, ThreeDmBrepTrimData> trims,
+        Dictionary<int, ThreeDmBrepTrimData> trims,
         ThreeDmTessellationSettings settings,
         double modelAbsoluteTolerance,
         (double Start, double End) domainU,
