@@ -282,10 +282,26 @@ public sealed class ThreeDmRenderSceneBuilder
                 }
                 if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasExtrusionRenderMeshes)
                 {
+                    var fallback = ThreeDmExtrusionFallbackTessellator.Tessellate(
+                        sceneObject.Id,
+                        extrusion,
+                        settings,
+                        modelTolerance,
+                        sceneObject.MaterialId,
+                        sceneObject.ObjectColorArgb);
+                    if (fallback is not null)
+                    {
+                        meshes.Add(fallback);
+                    }
+
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
-                        "3DM_RENDER_EXTRUSION_FILL_REQUIRES_RENDER_MESH",
-                        "No embedded Rhino render mesh was stored for this extrusion; analytic wireframe remains available."));
+                        fallback is not null
+                            ? "3DM_RENDER_EXTRUSION_FALLBACK_TESSELLATION"
+                            : "3DM_RENDER_EXTRUSION_FILL_REQUIRES_RENDER_MESH",
+                        fallback is not null
+                            ? "No embedded Rhino render mesh was stored; extrusion side/cap faces were generated from semantic profiles."
+                            : "No embedded Rhino render mesh was stored and no semantic extrusion fill could be generated; analytic wireframe remains available."));
                 }
                 break;
 
