@@ -254,10 +254,22 @@ public sealed class ThreeDmRenderSceneBuilder
 
                 if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasBrepRenderMeshes)
                 {
+                    var fallbackMeshes = ThreeDmBrepFallbackTessellator.Tessellate(
+                        sceneObject.Id,
+                        brep,
+                        settings,
+                        modelTolerance,
+                        sceneObject.MaterialId,
+                        sceneObject.ObjectColorArgb);
+                    meshes.AddRange(fallbackMeshes);
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
-                        "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
-                        "No embedded Rhino render mesh was stored for this Brep; exact edge overlays remain available."));
+                        fallbackMeshes.Length > 0
+                            ? "3DM_RENDER_BREP_FALLBACK_TESSELLATION"
+                            : "3DM_RENDER_BREP_FALLBACK_EMPTY",
+                        fallbackMeshes.Length > 0
+                            ? "No embedded Rhino render mesh was stored; Brep faces were tessellated from semantic NURBS surfaces and trim loops."
+                            : "No embedded Rhino render mesh was stored and semantic Brep fallback tessellation produced no triangles."));
                 }
                 break;
 

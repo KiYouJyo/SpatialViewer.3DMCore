@@ -6,6 +6,15 @@ All notable changes to SpatialViewer.3DMCore are documented here.
 
 Future work must preserve the 1.x host contract unless a deliberate major-version break is required.
 
+## [1.0.2] - 2026-09-06
+
+### Fixed
+- Brep objects no longer render as edge-only/empty when a 3DM archive omits embedded Rhino render meshes.
+- Added semantic NURBS-face fallback tessellation with UV trim-loop filtering and face-orientation preservation.
+
+### Tests
+- Added a regression proving a Brep with no embedded render mesh still produces a selectable face mesh.
+
 ## [1.0.1] - 2026-09-04
 
 ### Fixed
