@@ -254,10 +254,22 @@ public sealed class ThreeDmRenderSceneBuilder
 
                 if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasBrepRenderMeshes)
                 {
+                    var fallbackMeshes = ThreeDmBrepFallbackTessellator.Tessellate(
+                        sceneObject.Id,
+                        brep,
+                        settings,
+                        modelTolerance,
+                        sceneObject.MaterialId,
+                        sceneObject.ObjectColorArgb);
+                    meshes.AddRange(fallbackMeshes);
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
-                        "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
-                        "No embedded Rhino render mesh was stored for this Brep; exact edge overlays remain available."));
+                        fallbackMeshes.Length > 0
+                            ? "3DM_RENDER_BREP_FALLBACK_TESSELLATION"
+                            : "3DM_RENDER_BREP_FILL_REQUIRES_RENDER_MESH",
+                        fallbackMeshes.Length > 0
+                            ? "No embedded Rhino render mesh was stored; Brep faces were tessellated from semantic NURBS surfaces and trim loops."
+                            : "No embedded Rhino render mesh was stored and no semantic Brep face mesh could be generated; exact edge overlays remain available."));
                 }
                 break;
 
@@ -270,10 +282,26 @@ public sealed class ThreeDmRenderSceneBuilder
                 }
                 if (Includes(primitiveMask, ThreeDmRenderPrimitiveMask.Meshes) && !hasExtrusionRenderMeshes)
                 {
+                    var fallback = ThreeDmExtrusionFallbackTessellator.Tessellate(
+                        sceneObject.Id,
+                        extrusion,
+                        settings,
+                        modelTolerance,
+                        sceneObject.MaterialId,
+                        sceneObject.ObjectColorArgb);
+                    if (fallback is not null)
+                    {
+                        meshes.Add(fallback);
+                    }
+
                     diagnostics.Add(new ThreeDmRenderDiagnostic(
                         sceneObject.Id,
-                        "3DM_RENDER_EXTRUSION_FILL_REQUIRES_RENDER_MESH",
-                        "No embedded Rhino render mesh was stored for this extrusion; analytic wireframe remains available."));
+                        fallback is not null
+                            ? "3DM_RENDER_EXTRUSION_FALLBACK_TESSELLATION"
+                            : "3DM_RENDER_EXTRUSION_FILL_REQUIRES_RENDER_MESH",
+                        fallback is not null
+                            ? "No embedded Rhino render mesh was stored; extrusion side/cap faces were generated from semantic profiles."
+                            : "No embedded Rhino render mesh was stored and no semantic extrusion fill could be generated; analytic wireframe remains available."));
                 }
                 break;
 
