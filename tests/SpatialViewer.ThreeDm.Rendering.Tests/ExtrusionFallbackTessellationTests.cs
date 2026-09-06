@@ -45,8 +45,17 @@ public sealed class ExtrusionFallbackTessellationTests
         Assert.Contains(scene.Diagnostics, item => item.Code == "3DM_RENDER_EXTRUSION_FALLBACK_TESSELLATION");
     }
 
-    private static ThreeDmCurveGeometryData Polyline(params Point3d[] points) =>
-        new(
+    private static ThreeDmCurveGeometryData Polyline(params Point3d[] points)
+    {
+        var min = new Point3d(
+            points.Min(item => item.X),
+            points.Min(item => item.Y),
+            points.Min(item => item.Z));
+        var max = new Point3d(
+            points.Max(item => item.X),
+            points.Max(item => item.Y),
+            points.Max(item => item.Z));
+        return new(
             ThreeDmCurveForm.Polyline,
             new ThreeDmNurbsCurveData(
                 1,
@@ -60,5 +69,6 @@ public sealed class ExtrusionFallbackTessellationTests
             points,
             null,
             null,
-            BoundingBox3d.FromPoints(points));
+            new BoundingBox3d(min, max));
+    }
 }
