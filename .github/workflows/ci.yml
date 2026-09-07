@@ -26,7 +26,7 @@ jobs:
         run: |
           $zip = (Get-ChildItem artifacts/kernel/ThreeDmCore-*-x64.zip | Select-Object -First 1).FullName
           ./tools/validate-kernel-package.ps1 -ArchivePath $zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ThreeDmCore-x64
           path: |
